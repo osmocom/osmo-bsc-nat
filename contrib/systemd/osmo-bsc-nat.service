@@ -1,0 +1,11 @@
+[Unit]
+Description=Osmocom BSC NAT
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/osmo-bsc-nat -c /etc/osmocom/osmo-bsc-nat.cfg
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

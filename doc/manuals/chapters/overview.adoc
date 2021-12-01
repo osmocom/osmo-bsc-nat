@@ -1,0 +1,10 @@
+OsmoBSCNAT[[overview]]
+== Overview
+
+This manual should help you getting started with OsmoBSCNAT. It will cover
+aspects of configuring and running the OsmoBSCNAT.
+
+[[intro_overview]]
+=== About OsmoBSCNAT
+
+OsmoBSCNAT masquerades multiple BSCs behind one.

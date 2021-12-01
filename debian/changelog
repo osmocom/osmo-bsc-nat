@@ -1,0 +1,8 @@
+osmo-bsc-nat (0.1.0) unstable; urgency=medium
+
+  [ Oliver Smith ]
+  * Add project skeleton
+  * Initial empty repository
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 01 Dec 2021 10:48:03 +0100
+

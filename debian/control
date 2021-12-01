@@ -1,0 +1,44 @@
+Source: osmo-bsc-nat
+Section: net
+Priority: extra
+Maintainer: Osmocom team <openbsc@lists.osmocom.org>
+Build-Depends: debhelper (>=9),
+               dh-autoreconf,
+               autotools-dev,
+               autoconf,
+               automake,
+               libtool,
+               pkg-config,
+               python3-minimal,
+               libtalloc-dev,
+               libosmocore-dev (>= 1.6.0),
+               libosmo-sigtran-dev (>= 1.5.0),
+               libosmo-abis-dev (>= 1.2.0),
+               libosmo-netif-dev (>= 1.1.0),
+               osmo-gsm-manuals-dev (>= 1.2.0)
+Standards-Version: 3.9.8
+Vcs-Git: git://git.osmocom.org/osmo-bsc-nat.git
+Vcs-Browser: https://git.osmocom.org/osmo-bsc-nat/
+Homepage: https://projects.osmocom.org/projects/osmo-bsc-nat
+
+Package: osmo-bsc-nat
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: OsmoBSCNAT masquerades multiple BSCs behind one
+
+Package: osmo-bsc-nat-dbg
+Section: debug
+Architecture: any
+Multi-Arch: same
+Depends: osmo-bsc-nat (= ${binary:Version}), ${misc:Depends}
+Description: OsmoBSCNAT masquerades multiple BSCs behind one
+
+Package: osmo-bsc-nat-doc
+Architecture: all
+Section: doc
+Priority: optional
+Depends: ${misc:Depends}
+Description: ${misc:Package} PDF documentation
+ Various manuals: user manual, VTY reference manual and/or
+ protocol/interface manuals.
