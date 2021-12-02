@@ -19,6 +19,8 @@
 
 #include "config.h"
 
+#include <getopt.h>
+
 #include <osmocom/core/application.h>
 #include <osmocom/vty/cpu_sched_vty.h>
 #include <osmocom/vty/logging.h>
@@ -47,7 +49,59 @@ static struct vty_app_info vty_info = {
 	.go_parent_cb	= bsc_nat_vty_go_parent,
 };
 
-static void main_vty_init()
+static struct {
+	const char *config_file;
+} bsc_nat_cmdline_config = {
+	.config_file = "osmo-bsc-nat.cfg",
+};
+
+static void print_help()
+{
+	printf("usage: osmo-bsc-nat <options>\n");
+	printf("\n");
+	printf("optional arguments:\n");
+	printf("  -h, --help            show this help message and exit\n");
+	printf("  -c, --config-file     the config file to use\n");
+	printf("  -V, --version         show version number and exit\n");
+}
+
+static void handle_options(int argc, char **argv)
+{
+	while (1) {
+		int idx = 0, c;
+		static const struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"config-file", 1, 0, 'c'},
+			{"version", 0, 0, 'V' },
+			{ 0, 0, 0, 0 },
+		};
+
+		c = getopt_long(argc, argv, "hc:V", long_options, &idx);
+
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			print_help();
+			exit(0);
+			break;
+		case 'c':
+			bsc_nat_cmdline_config.config_file = optarg;
+			break;
+		case 'V':
+			print_version(1);
+			exit(0);
+			break;
+		default:
+			fprintf(stderr, "Error in command line options. Exiting.\n");
+			exit(-1);
+			break;
+		}
+	}
+}
+
+static void main_vty_init(int argc, char **argv)
 {
 	int rc;
 
@@ -60,6 +114,15 @@ static void main_vty_init()
 	logging_vty_add_cmds();
 	osmo_talloc_vty_add_cmds();
 	osmo_cpu_sched_vty_init(tall_bsc_nat_ctx);
+
+	handle_options(argc, argv);
+
+	rc = vty_read_config_file(bsc_nat_cmdline_config.config_file, NULL);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to parse the config file: '%s'\n",
+			bsc_nat_cmdline_config.config_file);
+		exit(1);
+	}
 
 	rc = telnet_init_dynif(tall_bsc_nat_ctx, g_bsc_nat, vty_get_bind_addr(), OSMO_VTY_PORT_BSC_NAT);
 	if (rc < 0) {
@@ -81,7 +144,7 @@ int main(int argc, char **argv)
 
 	g_bsc_nat = bsc_nat_alloc(tall_bsc_nat_ctx);
 
-	main_vty_init();
+	main_vty_init(argc, argv);
 
 	while (!osmo_select_shutdown_done())
 		osmo_select_main_ctx(0);
