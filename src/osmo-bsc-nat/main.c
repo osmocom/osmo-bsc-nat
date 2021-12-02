@@ -131,6 +131,49 @@ static void main_vty_init(int argc, char **argv)
 	}
 }
 
+static void signal_handler(int signum)
+{
+	fprintf(stdout, "signal %u received\n", signum);
+
+	switch (signum) {
+	case SIGINT:
+	case SIGTERM:
+		/* If SIGTERM was already sent before, just terminate immediately. */
+		if (osmo_select_shutdown_requested())
+			exit(-1);
+		osmo_select_shutdown_request();
+		break;
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report and
+		 * then run default SIGABRT handler, who will generate coredump
+		 * and abort the process. abort() should do this for us after we
+		 * return, but program wouldn't exit if an external SIGABRT is
+		 * received.
+		 */
+		talloc_report(tall_vty_ctx, stderr);
+		talloc_report_full(tall_bsc_nat_ctx, stderr);
+		signal(SIGABRT, SIG_DFL);
+		raise(SIGABRT);
+		break;
+	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
+		talloc_report_full(tall_bsc_nat_ctx, stderr);
+		break;
+	default:
+		break;
+	}
+}
+
+static void signal_handler_init(void)
+{
+	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	osmo_init_ignore_signals();
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -145,6 +188,7 @@ int main(int argc, char **argv)
 	g_bsc_nat = bsc_nat_alloc(tall_bsc_nat_ctx);
 
 	main_vty_init(argc, argv);
+	signal_handler_init();
 
 	while (!osmo_select_shutdown_done())
 		osmo_select_main_ctx(0);
