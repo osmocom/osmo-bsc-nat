@@ -16,13 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
-#pragma once
 
-struct bsc_nat {
-};
+#include "config.h"
 
-struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
-void bsc_nat_free(struct bsc_nat *bsc_nat);
+#include <osmocom/core/talloc.h>
+#include <osmocom/bsc_nat/bsc_nat.h>
 
-extern void *tall_bsc_nat_ctx;
-extern struct bsc_nat *g_bsc_nat;
+struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
+{
+	struct bsc_nat *bsc_nat;
+
+	bsc_nat = talloc_zero(tall_ctx, struct bsc_nat);
+	OSMO_ASSERT(bsc_nat);
+
+	return bsc_nat;
+}
+
+void bsc_nat_free(struct bsc_nat *bsc_nat)
+{
+	talloc_free(bsc_nat);
+}

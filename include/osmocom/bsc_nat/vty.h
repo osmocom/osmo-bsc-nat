@@ -16,13 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
+
 #pragma once
 
-struct bsc_nat {
+#include <osmocom/vty/vty.h>
+#include <osmocom/vty/buffer.h>
+#include <osmocom/vty/command.h>
+
+enum bsc_nat_vty_nodes {
+	BSC_NAT_NODE = _LAST_OSMOVTY_NODE,
 };
 
-struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
-void bsc_nat_free(struct bsc_nat *bsc_nat);
-
-extern void *tall_bsc_nat_ctx;
-extern struct bsc_nat *g_bsc_nat;
+void bsc_nat_vty_init(void);
+int bsc_nat_vty_go_parent(struct vty *vty);

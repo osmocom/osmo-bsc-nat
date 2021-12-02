@@ -18,11 +18,10 @@
  */
 #pragma once
 
-struct bsc_nat {
+#include <osmocom/core/logging.h>
+
+enum {
+	DMAIN,
 };
 
-struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
-void bsc_nat_free(struct bsc_nat *bsc_nat);
-
-extern void *tall_bsc_nat_ctx;
-extern struct bsc_nat *g_bsc_nat;
+extern const struct log_info bsc_nat_log_info;

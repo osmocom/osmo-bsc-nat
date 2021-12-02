@@ -16,13 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
-#pragma once
+#include <osmocom/core/logging.h>
+#include <osmocom/core/utils.h>
 
-struct bsc_nat {
+#include <osmocom/bsc_nat/logging.h>
+
+static const struct log_info_cat log_cat[] = {
+	[DMAIN] = {
+		.name = "DMAIN",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
+		.color = "",
+		.description = "Main program",
+	},
 };
 
-struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
-void bsc_nat_free(struct bsc_nat *bsc_nat);
-
-extern void *tall_bsc_nat_ctx;
-extern struct bsc_nat *g_bsc_nat;
+const struct log_info bsc_nat_log_info = {
+	.cat = log_cat,
+	.num_cat = ARRAY_SIZE(log_cat),
+};

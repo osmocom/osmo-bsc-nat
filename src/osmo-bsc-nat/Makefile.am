@@ -25,7 +25,10 @@ bin_PROGRAMS = \
 	$(NULL)
 
 osmo_bsc_nat_SOURCES = \
+	bsc_nat.c \
+	logging.c \
 	main.c \
+	vty.c \
 	$(NULL)
 
 osmo_bsc_nat_LDADD = \
