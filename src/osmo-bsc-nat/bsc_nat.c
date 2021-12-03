@@ -22,6 +22,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
+#include <osmocom/bsc_nat/bsc_nat_fsm.h>
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 {
@@ -30,10 +31,25 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 	bsc_nat = talloc_zero(tall_ctx, struct bsc_nat);
 	OSMO_ASSERT(bsc_nat);
 
+	bsc_nat->cn = talloc_zero(bsc_nat, struct bsc_nat_ss7_inst);
+	OSMO_ASSERT(bsc_nat->cn);
+	talloc_set_name_const(bsc_nat->cn, "struct bsc_nat_ss7_inst (CN)");
+
+	bsc_nat->ran = talloc_zero(bsc_nat, struct bsc_nat_ss7_inst);
+	OSMO_ASSERT(bsc_nat->ran);
+	talloc_set_name_const(bsc_nat->ran, "struct bsc_nat_ss7_inst (RAN)");
+
+	bsc_nat_fsm_alloc(bsc_nat);
+
 	return bsc_nat;
 }
 
 void bsc_nat_free(struct bsc_nat *bsc_nat)
 {
+	if (bsc_nat->fi) {
+		osmo_fsm_inst_free(bsc_nat->fi);
+		bsc_nat->fi = NULL;
+	}
+
 	talloc_free(bsc_nat);
 }

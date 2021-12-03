@@ -18,25 +18,6 @@
  */
 #pragma once
 
-#include <osmocom/core/fsm.h>
-#include <osmocom/sigtran/sccp_sap.h>
-
-
-struct bsc_nat_ss7_inst {
-	uint32_t ss7_id;
-	struct osmo_sccp_addr local_sccp_addr;
-	struct osmo_sccp_user *scu;
-};
-
-struct bsc_nat {
-	struct osmo_fsm_inst *fi;
-
-	struct bsc_nat_ss7_inst *cn;
-	struct bsc_nat_ss7_inst *ran;
-};
-
-struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
-void bsc_nat_free(struct bsc_nat *bsc_nat);
-
-extern void *tall_bsc_nat_ctx;
-extern struct bsc_nat *g_bsc_nat;
+void bsc_nat_fsm_alloc(struct bsc_nat *bsc_nat);
+void bsc_nat_fsm_start(struct bsc_nat *bsc_nat);
+void bsc_nat_fsm_stop(struct bsc_nat *bsc_nat);

@@ -68,12 +68,36 @@ DEFUN(cfg_bsc_nat,
 static int config_write_bsc_nat(struct vty *vty)
 {
 	vty_out(vty, "bsc-nat%s", VTY_NEWLINE);
+	vty_out(vty, " cs7-instance-cn %u%s", g_bsc_nat->cn->ss7_id, VTY_NEWLINE);
+	vty_out(vty, " cs7-instance-ran %u%s", g_bsc_nat->ran->ss7_id, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
+#define SS7_REF_STR "SS7 instance reference number\n"
+
+DEFUN(cfg_cs7_instance_cn,
+      cfg_cs7_instance_cn_cmd,
+      "cs7-instance-cn <0-15>",
+      "Set SS7 to be used to connect to CN-side\n" SS7_REF_STR)
+{
+	g_bsc_nat->cn->ss7_id = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_cs7_instance_ran,
+      cfg_cs7_instance_ran_cmd,
+      "cs7-instance-ran <0-15>",
+      "Set SS7 to be used to connect to RAN-side\n" SS7_REF_STR)
+{
+	g_bsc_nat->ran->ss7_id = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 void bsc_nat_vty_init(void)
 {
 	install_element(CONFIG_NODE, &cfg_bsc_nat_cmd);
 	install_node(&bsc_nat_node, config_write_bsc_nat);
+	install_element(BSC_NAT_NODE, &cfg_cs7_instance_cn_cmd);
+	install_element(BSC_NAT_NODE, &cfg_cs7_instance_ran_cmd);
 }

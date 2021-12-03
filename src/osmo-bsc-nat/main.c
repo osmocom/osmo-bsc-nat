@@ -22,6 +22,8 @@
 #include <getopt.h>
 
 #include <osmocom/core/application.h>
+#include <osmocom/sigtran/osmo_ss7.h>
+#include <osmocom/sigtran/sccp_sap.h>
 #include <osmocom/vty/cpu_sched_vty.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/misc.h>
@@ -29,6 +31,7 @@
 #include <osmocom/vty/telnet_interface.h>
 
 #include <osmocom/bsc_nat/bsc_nat.h>
+#include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/logging.h>
 #include <osmocom/bsc_nat/vty.h>
 
@@ -113,7 +116,10 @@ static void main_vty_init(int argc, char **argv)
 
 	logging_vty_add_cmds();
 	osmo_talloc_vty_add_cmds();
+	osmo_fsm_vty_add_cmds();
 	osmo_cpu_sched_vty_init(tall_bsc_nat_ctx);
+	osmo_ss7_vty_init_asp(NULL);
+	osmo_sccp_vty_init();
 
 	handle_options(argc, argv);
 
@@ -185,14 +191,25 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
+	rc = osmo_ss7_init();
+	if (rc < 0)
+		exit(1);
+
 	g_bsc_nat = bsc_nat_alloc(tall_bsc_nat_ctx);
 
 	main_vty_init(argc, argv);
 	signal_handler_init();
 
+	bsc_nat_fsm_start(g_bsc_nat);
+
 	while (!osmo_select_shutdown_done())
 		osmo_select_main_ctx(0);
 
+	bsc_nat_fsm_stop(g_bsc_nat);
+
+	talloc_report_full(g_bsc_nat, stderr);
+	bsc_nat_free(g_bsc_nat);
+	log_fini();
 	talloc_report_full(tall_bsc_nat_ctx, stderr);
 	talloc_free(tall_bsc_nat_ctx);
 	talloc_free(tall_vty_ctx);
