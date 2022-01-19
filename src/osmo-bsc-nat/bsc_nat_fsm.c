@@ -25,7 +25,10 @@
 #include <osmocom/core/fsm.h>
 #include <osmocom/core/select.h>
 
+#include <osmocom/gsm/gsm0808.h>
+
 #include <osmocom/sigtran/osmo_ss7.h>
+#include <osmocom/sigtran/sccp_helpers.h>
 
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
@@ -33,6 +36,18 @@
 
 #define DEFAULT_PC_RAN "0.23.1" /* same as default for OsmoMSC */
 #define DEFAULT_PC_CN "0.23.3" /* same as default for OsmoBSC */
+
+static char log_buf[255];
+
+#define LOG_SCCP(ss7_inst, peer_addr, level, fmt, args...) do { \
+	if (peer_addr) \
+		osmo_sccp_addr_to_str_buf(log_buf, sizeof(log_buf), NULL, peer_addr); \
+	LOGP(DMAIN, level, "(%s%s%s) " fmt, \
+	     peer_addr ? log_buf : "", \
+	     peer_addr ? " from " : "", \
+	     ss7_inst == g_bsc_nat->ran ? "RAN" : "CN", \
+	     ## args); \
+} while (0)
 
 #define X(s) (1 << (s))
 
@@ -47,11 +62,95 @@ enum bsc_nat_fsm_events {
 	BSC_NAT_FSM_EV_STOP,
 };
 
-static int sccp_sap_up(struct osmo_prim_hdr *oph, void *priv)
+static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
 {
-	LOGP(DMAIN, LOGL_NOTICE, "STUB: sccp_sap_up() called\n");
+	if (src == g_bsc_nat->cn)
+		return g_bsc_nat->ran;
+	return g_bsc_nat->cn;
+}
 
-	return 0;
+static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
+{
+	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
+	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
+	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
+	struct osmo_sccp_addr *my_addr;
+	struct osmo_sccp_addr *peer_addr;
+	char buf[255];
+	int rc = -1;
+
+	switch (OSMO_PRIM_HDR(oph)) {
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
+		/* indication of new inbound connection request */
+		peer_addr = &prim->u.connect.calling_addr;
+		LOG_SCCP(src, peer_addr, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		break;
+
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
+		/* connection-oriented data received */
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		break;
+
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
+		/* indication of disconnect */
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		break;
+
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
+		/* connection-less data received */
+		my_addr = &prim->u.unitdata.called_addr;
+		peer_addr = &prim->u.unitdata.calling_addr;
+		LOG_SCCP(src, peer_addr, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, my_addr)) {
+			osmo_sccp_addr_to_str_buf(buf, sizeof(buf), NULL, my_addr);
+			LOG_SCCP(src, peer_addr, LOGL_ERROR, "Called address %s is not the locally configured"
+				 " address %s\n", buf, osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr));
+			goto error;
+		}
+
+		/* Figure out called party in dest. TODO: build and use a
+		 * mapping of peer_addr + conn_id <--> dest_ss7. For now, this
+		 * is simplified by assuming there is only one MSC, one BSC. */
+
+		struct osmo_ss7_instance *dest_ss7;
+		struct osmo_sccp_addr dest_called;
+
+		dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
+		OSMO_ASSERT(dest_ss7);
+
+		if (src == g_bsc_nat->ran) {
+			if (osmo_sccp_addr_by_name_local(&dest_called, "msc", dest_ss7) < 0) {
+				LOG_SCCP(src, peer_addr, LOGL_ERROR, "Could not find MSC in address book\n");
+				goto error;
+			}
+		} else {
+			if (osmo_sccp_addr_by_name_local(&dest_called, "bsc", dest_ss7) < 0) {
+				LOG_SCCP(src, peer_addr, LOGL_ERROR, "Could not find BSC in address book\n");
+				goto error;
+			}
+		}
+
+		LOG_SCCP(src, peer_addr, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &dest_called),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
+		 * unitdata msg and send it again. */
+		msgb_pull_to_l2(oph->msg);
+		osmo_sccp_tx_unitdata(dest->scu, &dest->local_sccp_addr, &dest_called, oph->msg->data,
+				      msgb_length(oph->msg));
+		rc = 0;
+		break;
+
+	default:
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		break;
+	}
+
+error:
+	msgb_free(oph->msg);
+	return rc;
 }
 
 static int ss7_inst_init(struct bsc_nat_ss7_inst *inst, const char *name, const char *default_pc_str,
