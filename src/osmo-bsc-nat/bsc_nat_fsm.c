@@ -105,7 +105,7 @@ static void st_starting_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 		return;
 	}
 
-	if (ss7_inst_init(bsc_nat->ran, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, OSMO_SCCP_SSN_MSC) < 0) {
+	if (ss7_inst_init(bsc_nat->ran, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, OSMO_SCCP_SSN_BSSAP) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}
