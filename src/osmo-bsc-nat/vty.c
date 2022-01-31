@@ -28,26 +28,6 @@
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/vty.h>
 
-int bsc_nat_vty_go_parent(struct vty *vty)
-{
-	switch (vty->node) {
-	case BSC_NAT_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = g_bsc_nat;
-		break;
-	case CONFIG_NODE:
-		vty->node = ENABLE_NODE;
-		vty->index = NULL;
-		break;
-	default:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	}
-
-	return vty->node;
-}
-
 static struct cmd_node bsc_nat_node = {
 	BSC_NAT_NODE,
 	"%s(config-bsc-nat)# ",

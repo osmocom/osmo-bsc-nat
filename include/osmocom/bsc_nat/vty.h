@@ -28,4 +28,3 @@ enum bsc_nat_vty_nodes {
 };
 
 void bsc_nat_vty_init(void);
-int bsc_nat_vty_go_parent(struct vty *vty);

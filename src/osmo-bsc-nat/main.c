@@ -49,7 +49,7 @@ struct bsc_nat *g_bsc_nat;
 static struct vty_app_info vty_info = {
 	.name		= "OsmoBSCNAT",
 	.version	= PACKAGE_VERSION,
-	.go_parent_cb	= bsc_nat_vty_go_parent,
+	.go_parent_cb	= osmo_ss7_vty_go_parent,
 };
 
 static struct {
