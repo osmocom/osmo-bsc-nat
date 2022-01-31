@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
