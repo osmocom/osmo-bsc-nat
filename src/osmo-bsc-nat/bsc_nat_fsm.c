@@ -69,6 +69,31 @@ static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
 	return g_bsc_nat->cn;
 }
 
+/* For connection-oriented messages, figure out which side is the BSCNAT,
+ * either the called_addr or calling_addr. */
+static int sccp_sap_get_peer_addr_in(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr **peer_addr_in,
+				     struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
+{
+	if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, called_addr) == 0) {
+		*peer_addr_in = called_addr;
+		return 0;
+	} else if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, calling_addr) == 0) {
+		*peer_addr_in = calling_addr;
+		return 0;
+	}
+
+	char buf_called[255];
+	char buf_calling[255];
+
+	osmo_sccp_addr_to_str_buf(buf_called, sizeof(buf_called), NULL, called_addr);
+	osmo_sccp_addr_to_str_buf(buf_calling, sizeof(buf_calling), NULL, calling_addr);
+
+	LOG_SCCP(src, NULL, LOGL_ERROR, "Invalid connection oriented message, locally configured address %s"
+		 " is neither called address %s nor calling address %s!\n",
+		 osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr), buf_called, buf_calling);
+	return -1;
+}
+
 /* Figure out who will receive the message.
  * For now this is simplified by assuming there is only one MSC, one BSC. */
 static int sccp_sap_get_peer_addr_out(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr *peer_addr_in,
@@ -94,6 +119,8 @@ static int sccp_sap_get_peer_addr_out(struct bsc_nat_ss7_inst *src, struct osmo_
 	return 0;
 }
 
+/* Handle incoming messages. For now this is simplified by assuming there is
+ * only one MSC, one BSC (not yet translating connection ids etc.). */
 static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
@@ -104,20 +131,78 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	int rc = -1;
 
 	switch (OSMO_PRIM_HDR(oph)) {
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
+		/* indication of connection confirm */
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
+					      &prim->u.connect.calling_addr) < 0)
+			goto error;
+
+		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
+			goto error;
+
+		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		msgb_pull_to_l2(oph->msg);
+		osmo_sccp_tx_conn_resp(dest->scu, prim->u.connect.conn_id, &peer_addr_out, oph->msg->data,
+				       msgb_length(oph->msg));
+		rc = 0;
+		break;
+
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
-		peer_addr_in = &prim->u.connect.calling_addr;
-		LOG_SCCP(src, peer_addr_in, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
+					      &prim->u.connect.calling_addr) < 0)
+			goto error;
+
+		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
+			goto error;
+
+		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		msgb_pull_to_l2(oph->msg);
+		osmo_sccp_tx_conn_req(dest->scu, prim->u.connect.conn_id, &dest->local_sccp_addr, &peer_addr_out,
+				      oph->msg->data, msgb_length(oph->msg));
+		rc = 0;
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
 		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
+			goto error;
+
+		LOG_SCCP(src, NULL, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		msgb_pull_to_l2(oph->msg);
+		osmo_sccp_tx_data(dest->scu, prim->u.data.conn_id, oph->msg->data, msgb_length(oph->msg));
+		rc = 0;
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
 		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
+			goto error;
+
+		LOG_SCCP(src, NULL, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		osmo_sccp_tx_disconn(dest->scu, prim->u.disconnect.conn_id, &prim->u.disconnect.responding_addr,
+				     prim->u.disconnect.cause);
+		rc = 0;
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
