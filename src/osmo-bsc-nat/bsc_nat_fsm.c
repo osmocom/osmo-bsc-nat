@@ -144,7 +144,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		break;
 
 	default:
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		LOG_SCCP(src, NULL, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, osmo_scu_prim_name(oph));
 		break;
 	}
 
