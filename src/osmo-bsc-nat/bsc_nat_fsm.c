@@ -39,12 +39,12 @@
 
 static char log_buf[255];
 
-#define LOG_SCCP(ss7_inst, peer_addr, level, fmt, args...) do { \
-	if (peer_addr) \
-		osmo_sccp_addr_to_str_buf(log_buf, sizeof(log_buf), NULL, peer_addr); \
+#define LOG_SCCP(ss7_inst, peer_addr_in, level, fmt, args...) do { \
+	if (peer_addr_in) \
+		osmo_sccp_addr_to_str_buf(log_buf, sizeof(log_buf), NULL, peer_addr_in); \
 	LOGP(DMAIN, level, "(%s%s%s) " fmt, \
-	     peer_addr ? log_buf : "", \
-	     peer_addr ? " from " : "", \
+	     peer_addr_in ? log_buf : "", \
+	     peer_addr_in ? " from " : "", \
 	     ss7_inst == g_bsc_nat->ran ? "RAN" : "CN", \
 	     ## args); \
 } while (0)
@@ -74,14 +74,15 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
 	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
-	struct osmo_sccp_addr *peer_addr;
+	struct osmo_sccp_addr *peer_addr_in;
+	struct osmo_sccp_addr peer_addr_out;
 	int rc = -1;
 
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
-		peer_addr = &prim->u.connect.calling_addr;
-		LOG_SCCP(src, peer_addr, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		peer_addr_in = &prim->u.connect.calling_addr;
+		LOG_SCCP(src, peer_addr_in, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
@@ -96,39 +97,38 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-less data received */
-		peer_addr = &prim->u.unitdata.calling_addr;
-		LOG_SCCP(src, peer_addr, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+		peer_addr_in = &prim->u.unitdata.calling_addr;
+		LOG_SCCP(src, peer_addr_in, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
 
 		/* Figure out called party in dest. TODO: build and use a
 		 * mapping of peer_addr + conn_id <--> dest_ss7. For now, this
 		 * is simplified by assuming there is only one MSC, one BSC. */
 
 		struct osmo_ss7_instance *dest_ss7;
-		struct osmo_sccp_addr dest_called;
 
 		dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
 		OSMO_ASSERT(dest_ss7);
 
 		if (src == g_bsc_nat->ran) {
-			if (osmo_sccp_addr_by_name_local(&dest_called, "msc", dest_ss7) < 0) {
-				LOG_SCCP(src, peer_addr, LOGL_ERROR, "Could not find MSC in address book\n");
+			if (osmo_sccp_addr_by_name_local(&peer_addr_out, "msc", dest_ss7) < 0) {
+				LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find MSC in address book\n");
 				goto error;
 			}
 		} else {
-			if (osmo_sccp_addr_by_name_local(&dest_called, "bsc", dest_ss7) < 0) {
-				LOG_SCCP(src, peer_addr, LOGL_ERROR, "Could not find BSC in address book\n");
+			if (osmo_sccp_addr_by_name_local(&peer_addr_out, "bsc", dest_ss7) < 0) {
+				LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find BSC in address book\n");
 				goto error;
 			}
 		}
 
-		LOG_SCCP(src, peer_addr, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &dest_called),
+		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
 			 dest == g_bsc_nat->ran ? "RAN" : "CN");
 
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_unitdata(dest->scu, &dest->local_sccp_addr, &dest_called, oph->msg->data,
+		osmo_sccp_tx_unitdata(dest->scu, &dest->local_sccp_addr, &peer_addr_out, oph->msg->data,
 				      msgb_length(oph->msg));
 		rc = 0;
 		break;
