@@ -69,6 +69,31 @@ static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
 	return g_bsc_nat->cn;
 }
 
+/* Figure out who will receive the message.
+ * For now this is simplified by assuming there is only one MSC, one BSC. */
+static int sccp_sap_get_peer_addr_out(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr *peer_addr_in,
+				      struct osmo_sccp_addr *peer_addr_out)
+{
+	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
+	struct osmo_ss7_instance *dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
+
+	OSMO_ASSERT(dest_ss7);
+
+	if (src == g_bsc_nat->ran) {
+		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest_ss7) < 0) {
+			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find MSC in address book\n");
+			return -1;
+		}
+	} else {
+		if (osmo_sccp_addr_by_name_local(peer_addr_out, "bsc", dest_ss7) < 0) {
+			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find BSC in address book\n");
+			return -2;
+		}
+	}
+
+	return 0;
+}
+
 static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
@@ -100,26 +125,8 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		peer_addr_in = &prim->u.unitdata.calling_addr;
 		LOG_SCCP(src, peer_addr_in, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
 
-		/* Figure out called party in dest. TODO: build and use a
-		 * mapping of peer_addr + conn_id <--> dest_ss7. For now, this
-		 * is simplified by assuming there is only one MSC, one BSC. */
-
-		struct osmo_ss7_instance *dest_ss7;
-
-		dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
-		OSMO_ASSERT(dest_ss7);
-
-		if (src == g_bsc_nat->ran) {
-			if (osmo_sccp_addr_by_name_local(&peer_addr_out, "msc", dest_ss7) < 0) {
-				LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find MSC in address book\n");
-				goto error;
-			}
-		} else {
-			if (osmo_sccp_addr_by_name_local(&peer_addr_out, "bsc", dest_ss7) < 0) {
-				LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find BSC in address book\n");
-				goto error;
-			}
-		}
+		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
+			goto error;
 
 		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
 			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
