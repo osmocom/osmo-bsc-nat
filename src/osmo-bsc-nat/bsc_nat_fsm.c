@@ -74,9 +74,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
 	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
-	struct osmo_sccp_addr *my_addr;
 	struct osmo_sccp_addr *peer_addr;
-	char buf[255];
 	int rc = -1;
 
 	switch (OSMO_PRIM_HDR(oph)) {
@@ -98,16 +96,8 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-less data received */
-		my_addr = &prim->u.unitdata.called_addr;
 		peer_addr = &prim->u.unitdata.calling_addr;
 		LOG_SCCP(src, peer_addr, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
-		if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, my_addr)) {
-			osmo_sccp_addr_to_str_buf(buf, sizeof(buf), NULL, my_addr);
-			LOG_SCCP(src, peer_addr, LOGL_ERROR, "Called address %s is not the locally configured"
-				 " address %s\n", buf, osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr));
-			goto error;
-		}
 
 		/* Figure out called party in dest. TODO: build and use a
 		 * mapping of peer_addr + conn_id <--> dest_ss7. For now, this
