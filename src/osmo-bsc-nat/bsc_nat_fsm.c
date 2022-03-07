@@ -69,15 +69,15 @@ static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
 	return g_bsc_nat->cn;
 }
 
-/* For connection-oriented messages, figure out which side is the BSCNAT,
+/* For connection-oriented messages, figure out which side is not the BSCNAT,
  * either the called_addr or calling_addr. */
 static int sccp_sap_get_peer_addr_in(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr **peer_addr_in,
 				     struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
 {
-	if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, called_addr) == 0) {
+	if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, called_addr) != 0) {
 		*peer_addr_in = called_addr;
 		return 0;
-	} else if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, calling_addr) == 0) {
+	} else if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, calling_addr) != 0) {
 		*peer_addr_in = calling_addr;
 		return 0;
 	}
