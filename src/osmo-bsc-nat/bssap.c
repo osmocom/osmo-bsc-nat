@@ -22,12 +22,19 @@
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/sigtran/sccp_helpers.h>
 #include <osmocom/sigtran/sccp_sap.h>
+#include <osmocom/bsc_nat/bsc.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/logging.h>
 
 static int bssap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran.sccp_inst;
+	struct bsc *bsc;
+
+	/* Store the BSC, since RESET was done the BSCNAT should accept its messages */
+	bsc = bsc_get_by_pc(addr->pc);
+	if (!bsc)
+		bsc = bsc_alloc(addr);
 
 	LOGP(DMAIN, LOGL_NOTICE, "Rx RESET from %s\n", bsc_nat_print_addr_ran(addr));
 

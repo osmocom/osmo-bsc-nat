@@ -20,8 +20,10 @@
 #include "config.h"
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/bsc_nat/bsc.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
+#include <osmocom/bsc_nat/logging.h>
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 {
@@ -38,6 +40,8 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 	OSMO_ASSERT(bsc_nat->ran.sccp_inst);
 	talloc_set_name_const(bsc_nat->ran.sccp_inst, "struct bsc_nat_sccp_inst (RAN)");
 
+	INIT_LLIST_HEAD(&bsc_nat->ran.bscs);
+
 	bsc_nat_fsm_alloc(bsc_nat);
 
 	return bsc_nat;
@@ -45,9 +49,15 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 
 void bsc_nat_free(struct bsc_nat *bsc_nat)
 {
+	struct bsc *bsc, *b;
+
 	if (bsc_nat->fi) {
 		osmo_fsm_inst_free(bsc_nat->fi);
 		bsc_nat->fi = NULL;
+	}
+
+	llist_for_each_entry_safe(bsc, b, &bsc_nat->ran.bscs, list) {
+		bsc_free(bsc);
 	}
 
 	talloc_free(bsc_nat);

@@ -25,6 +25,7 @@ bin_PROGRAMS = \
 	$(NULL)
 
 osmo_bsc_nat_SOURCES = \
+	bsc.c \
 	bsc_nat.c \
 	bsc_nat_fsm.c \
 	bssap.c \
