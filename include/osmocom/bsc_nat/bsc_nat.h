@@ -24,6 +24,8 @@
 
 struct bsc_nat_sccp_inst {
 	uint32_t ss7_id;
+	struct osmo_ss7_instance *ss7_inst;
+
 	struct osmo_sccp_addr local_sccp_addr;
 	struct osmo_sccp_user *scu;
 };

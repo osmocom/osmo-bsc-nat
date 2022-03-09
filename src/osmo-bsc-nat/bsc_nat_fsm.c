@@ -100,17 +100,14 @@ static int sccp_sap_get_peer_addr_out(struct bsc_nat_sccp_inst *src, struct osmo
 				      struct osmo_sccp_addr *peer_addr_out)
 {
 	struct bsc_nat_sccp_inst *dest = sccp_inst_dest(src);
-	struct osmo_ss7_instance *dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
-
-	OSMO_ASSERT(dest_ss7);
 
 	if (src == g_bsc_nat->ran) {
-		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest_ss7) < 0) {
+		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest->ss7_inst) < 0) {
 			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find MSC in address book\n");
 			return -1;
 		}
 	} else {
-		if (osmo_sccp_addr_by_name_local(peer_addr_out, "bsc", dest_ss7) < 0) {
+		if (osmo_sccp_addr_by_name_local(peer_addr_out, "bsc", dest->ss7_inst) < 0) {
 			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find BSC in address book\n");
 			return -2;
 		}
@@ -251,6 +248,8 @@ static int sccp_inst_init(struct bsc_nat_sccp_inst *sccp_inst, const char *name,
 		return -1;
 	}
 
+	sccp_inst->ss7_inst = osmo_ss7_instance_find(sccp_inst->ss7_id);
+
 	osmo_sccp_local_addr_by_instance(&sccp_inst->local_sccp_addr, sccp, ssn);
 
 	sccp_inst->scu = osmo_sccp_user_bind(sccp, name, sccp_sap_up, ssn);
@@ -270,9 +269,10 @@ static void sccp_inst_free(struct bsc_nat_sccp_inst *sccp_inst)
 		sccp_inst->scu = NULL;
 	}
 
-	struct osmo_ss7_instance *ss7_inst = osmo_ss7_instance_find(sccp_inst->ss7_id);
-	if (ss7_inst)
-		osmo_ss7_instance_destroy(ss7_inst);
+	if (sccp_inst->ss7_inst) {
+		osmo_ss7_instance_destroy(sccp_inst->ss7_inst);
+		sccp_inst->ss7_inst = NULL;
+	}
 
 	talloc_free(sccp_inst);
 }
