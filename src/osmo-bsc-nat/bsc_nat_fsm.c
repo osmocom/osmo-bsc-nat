@@ -32,18 +32,6 @@
 #define DEFAULT_PC_RAN "0.23.1" /* same as default for OsmoMSC */
 #define DEFAULT_PC_CN "0.23.3" /* same as default for OsmoBSC */
 
-static char log_buf[255];
-
-#define LOG_SCCP(sccp_inst, peer_addr_in, level, fmt, args...) do { \
-	if (peer_addr_in) \
-		osmo_sccp_addr_to_str_buf(log_buf, sizeof(log_buf), NULL, peer_addr_in); \
-	LOGP(DMAIN, level, "(%s%s%s) " fmt, \
-	     peer_addr_in ? log_buf : "", \
-	     peer_addr_in ? " from " : "", \
-	     sccp_inst == g_bsc_nat->ran ? "RAN" : "CN", \
-	     ## args); \
-} while (0)
-
 #define X(s) (1 << (s))
 
 enum bsc_nat_fsm_states {
@@ -83,9 +71,9 @@ static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_
 	osmo_sccp_addr_to_str_buf(buf_called, sizeof(buf_called), NULL, called_addr);
 	osmo_sccp_addr_to_str_buf(buf_calling, sizeof(buf_calling), NULL, calling_addr);
 
-	LOG_SCCP(src, NULL, LOGL_ERROR, "Invalid connection oriented message, locally configured address %s"
-		 " is neither called address %s nor calling address %s!\n",
-		 osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr), buf_called, buf_calling);
+	LOGP(DMAIN, LOGL_ERROR, "Invalid connection oriented message, locally configured address %s"
+	     " is neither called address %s nor calling address %s!\n",
+	     osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr), buf_called, buf_calling);
 	return -1;
 }
 
@@ -98,12 +86,12 @@ static int sccp_sap_get_peer_addr_out(struct bsc_nat_sccp_inst *src, struct osmo
 
 	if (src == g_bsc_nat->ran) {
 		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest->ss7_inst) < 0) {
-			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find MSC in address book\n");
+			LOGP(DMAIN, LOGL_ERROR, "Could not find MSC in address book\n");
 			return -1;
 		}
 	} else {
 		if (osmo_sccp_addr_by_name_local(peer_addr_out, "bsc", dest->ss7_inst) < 0) {
-			LOG_SCCP(src, peer_addr_in, LOGL_ERROR, "Could not find BSC in address book\n");
+			LOGP(DMAIN, LOGL_ERROR, "Could not find BSC in address book\n");
 			return -2;
 		}
 	}
@@ -201,7 +189,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		break;
 
 	default:
-		LOG_SCCP(src, NULL, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, osmo_scu_prim_name(oph));
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, osmo_scu_prim_name(oph));
 		break;
 	}
 
