@@ -27,6 +27,7 @@ bin_PROGRAMS = \
 osmo_bsc_nat_SOURCES = \
 	bsc_nat.c \
 	bsc_nat_fsm.c \
+	bssap.c \
 	logging.c \
 	main.c \
 	vty.c \
