@@ -128,27 +128,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	int rc = -1;
 
 	switch (OSMO_PRIM_HDR(oph)) {
-	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
-		/* indication of connection confirm */
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
-		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
-					      &prim->u.connect.calling_addr) < 0)
-			goto error;
-
-		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
-			goto error;
-
-		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
-
-		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_resp(dest->scu, prim->u.connect.conn_id, &peer_addr_out, oph->msg->data,
-				       msgb_length(oph->msg));
-		rc = 0;
-		break;
-
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
 		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
@@ -167,6 +146,27 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(dest->scu, prim->u.connect.conn_id, &dest->local_sccp_addr, &peer_addr_out,
 				      oph->msg->data, msgb_length(oph->msg));
+		rc = 0;
+		break;
+
+	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
+		/* indication of connection confirm */
+		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
+
+		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
+					      &prim->u.connect.calling_addr) < 0)
+			goto error;
+
+		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
+			goto error;
+
+		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
+			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
+			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+
+		msgb_pull_to_l2(oph->msg);
+		osmo_sccp_tx_conn_resp(dest->scu, prim->u.connect.conn_id, &peer_addr_out, oph->msg->data,
+				       msgb_length(oph->msg));
 		rc = 0;
 		break;
 
