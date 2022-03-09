@@ -18,13 +18,10 @@
  */
 
 #include "config.h"
-
 #include <unistd.h>
-
-#include <osmocom/vty/telnet_interface.h>
-#include <osmocom/vty/logging.h>
 #include <osmocom/vty/command.h>
-
+#include <osmocom/vty/logging.h>
+#include <osmocom/vty/telnet_interface.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/vty.h>
 

@@ -18,9 +18,7 @@
  */
 
 #include "config.h"
-
 #include <getopt.h>
-
 #include <osmocom/core/application.h>
 #include <osmocom/sigtran/osmo_ss7.h>
 #include <osmocom/sigtran/sccp_sap.h>
@@ -29,7 +27,6 @@
 #include <osmocom/vty/misc.h>
 #include <osmocom/vty/ports.h>
 #include <osmocom/vty/telnet_interface.h>
-
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/logging.h>

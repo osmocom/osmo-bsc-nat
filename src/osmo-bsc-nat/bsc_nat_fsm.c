@@ -18,18 +18,13 @@
  */
 
 #include "config.h"
-
 #include <errno.h>
 #include <stdint.h>
-
 #include <osmocom/core/fsm.h>
 #include <osmocom/core/select.h>
-
 #include <osmocom/gsm/gsm0808.h>
-
 #include <osmocom/sigtran/osmo_ss7.h>
 #include <osmocom/sigtran/sccp_helpers.h>
-
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/logging.h>

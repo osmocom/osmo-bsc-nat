@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
+
 #pragma once
 
 #include <osmocom/core/logging.h>

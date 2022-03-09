@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
+
 #pragma once
 
 void bsc_nat_fsm_alloc(struct bsc_nat *bsc_nat);

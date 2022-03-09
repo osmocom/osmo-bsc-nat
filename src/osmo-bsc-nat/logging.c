@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
+
 #include <osmocom/core/logging.h>
 #include <osmocom/core/utils.h>
-
 #include <osmocom/bsc_nat/logging.h>
 
 static const struct log_info_cat log_cat[] = {

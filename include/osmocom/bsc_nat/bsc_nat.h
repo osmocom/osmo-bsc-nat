@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/lienses/>.
  *
  */
+
 #pragma once
 
 #include <osmocom/core/fsm.h>
 #include <osmocom/sigtran/sccp_sap.h>
-
 
 struct bsc_nat_sccp_inst {
 	uint32_t ss7_id;
