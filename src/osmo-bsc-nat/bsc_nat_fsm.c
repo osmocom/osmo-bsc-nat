@@ -122,11 +122,11 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	struct osmo_sccp_addr peer_addr_out;
 	int rc = -1;
 
+	LOGP(DMAIN, LOGL_DEBUG, "Rx %s from %s\n", osmo_scu_prim_name(oph), src == g_bsc_nat->cn ? "CN" : "RAN");
+
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
 		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
 					      &prim->u.connect.calling_addr) < 0)
 			goto error;
@@ -146,8 +146,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
 		/* indication of connection confirm */
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
 		if (sccp_sap_get_peer_addr_in(src, &peer_addr_in, &prim->u.connect.called_addr,
 					      &prim->u.connect.calling_addr) < 0)
 			goto error;
@@ -167,8 +165,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
 		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
 			goto error;
 
@@ -183,8 +179,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
-		LOG_SCCP(src, NULL, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
-
 		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
 			goto error;
 
@@ -200,7 +194,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-less data received */
 		peer_addr_in = &prim->u.unitdata.calling_addr;
-		LOG_SCCP(src, peer_addr_in, LOGL_DEBUG, "%s(%s)\n", __func__, osmo_scu_prim_name(oph));
 
 		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
 			goto error;
