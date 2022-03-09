@@ -39,13 +39,13 @@
 
 static char log_buf[255];
 
-#define LOG_SCCP(ss7_inst, peer_addr_in, level, fmt, args...) do { \
+#define LOG_SCCP(sccp_inst, peer_addr_in, level, fmt, args...) do { \
 	if (peer_addr_in) \
 		osmo_sccp_addr_to_str_buf(log_buf, sizeof(log_buf), NULL, peer_addr_in); \
 	LOGP(DMAIN, level, "(%s%s%s) " fmt, \
 	     peer_addr_in ? log_buf : "", \
 	     peer_addr_in ? " from " : "", \
-	     ss7_inst == g_bsc_nat->ran ? "RAN" : "CN", \
+	     sccp_inst == g_bsc_nat->ran ? "RAN" : "CN", \
 	     ## args); \
 } while (0)
 
@@ -62,7 +62,7 @@ enum bsc_nat_fsm_events {
 	BSC_NAT_FSM_EV_STOP,
 };
 
-static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
+static struct bsc_nat_sccp_inst *sccp_inst_dest(struct bsc_nat_sccp_inst *src)
 {
 	if (src == g_bsc_nat->cn)
 		return g_bsc_nat->ran;
@@ -71,7 +71,7 @@ static struct bsc_nat_ss7_inst *ss7_inst_dest(struct bsc_nat_ss7_inst *src)
 
 /* For connection-oriented messages, figure out which side is not the BSCNAT,
  * either the called_addr or calling_addr. */
-static int sccp_sap_get_peer_addr_in(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr **peer_addr_in,
+static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_sccp_addr **peer_addr_in,
 				     struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
 {
 	if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, called_addr) != 0) {
@@ -96,10 +96,10 @@ static int sccp_sap_get_peer_addr_in(struct bsc_nat_ss7_inst *src, struct osmo_s
 
 /* Figure out who will receive the message.
  * For now this is simplified by assuming there is only one MSC, one BSC. */
-static int sccp_sap_get_peer_addr_out(struct bsc_nat_ss7_inst *src, struct osmo_sccp_addr *peer_addr_in,
+static int sccp_sap_get_peer_addr_out(struct bsc_nat_sccp_inst *src, struct osmo_sccp_addr *peer_addr_in,
 				      struct osmo_sccp_addr *peer_addr_out)
 {
-	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
+	struct bsc_nat_sccp_inst *dest = sccp_inst_dest(src);
 	struct osmo_ss7_instance *dest_ss7 = osmo_ss7_instance_find(dest->ss7_id);
 
 	OSMO_ASSERT(dest_ss7);
@@ -123,8 +123,8 @@ static int sccp_sap_get_peer_addr_out(struct bsc_nat_ss7_inst *src, struct osmo_
  * only one MSC, one BSC (not yet translating connection ids etc.). */
 static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 {
-	struct bsc_nat_ss7_inst *src = osmo_sccp_user_get_priv(scu);
-	struct bsc_nat_ss7_inst *dest = ss7_inst_dest(src);
+	struct bsc_nat_sccp_inst *src = osmo_sccp_user_get_priv(scu);
+	struct bsc_nat_sccp_inst *dest = sccp_inst_dest(src);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_sccp_addr *peer_addr_in;
 	struct osmo_sccp_addr peer_addr_out;
@@ -235,7 +235,7 @@ error:
 	return rc;
 }
 
-static int ss7_inst_init(struct bsc_nat_ss7_inst *inst, const char *name, const char *default_pc_str,
+static int sccp_inst_init(struct bsc_nat_sccp_inst *sccp_inst, const char *name, const char *default_pc_str,
 			 enum osmo_sccp_ssn ssn)
 {
 	int default_pc;
@@ -244,49 +244,49 @@ static int ss7_inst_init(struct bsc_nat_ss7_inst *inst, const char *name, const 
 	default_pc = osmo_ss7_pointcode_parse(NULL, default_pc_str);
 	OSMO_ASSERT(default_pc >= 0);
 
-	sccp = osmo_sccp_simple_client_on_ss7_id(inst, inst->ss7_id, name, default_pc, OSMO_SS7_ASP_PROT_M3UA, 0, NULL,
-						 0, NULL);
+	sccp = osmo_sccp_simple_client_on_ss7_id(sccp_inst, sccp_inst->ss7_id, name, default_pc, OSMO_SS7_ASP_PROT_M3UA,
+						 0, NULL, 0, NULL);
 	if (!sccp) {
 		LOGP(DMAIN, LOGL_ERROR, "%s: failed to request sccp client instance for sccp user\n", name);
 		return -1;
 	}
 
-	osmo_sccp_local_addr_by_instance(&inst->local_sccp_addr, sccp, ssn);
+	osmo_sccp_local_addr_by_instance(&sccp_inst->local_sccp_addr, sccp, ssn);
 
-	inst->scu = osmo_sccp_user_bind(sccp, name, sccp_sap_up, ssn);
-	if (!inst->scu) {
+	sccp_inst->scu = osmo_sccp_user_bind(sccp, name, sccp_sap_up, ssn);
+	if (!sccp_inst->scu) {
 		LOGP(DMAIN, LOGL_ERROR, "%s: failed to bind sccp user\n", name);
 		return -2;
 	}
 
-	osmo_sccp_user_set_priv(inst->scu, inst);
+	osmo_sccp_user_set_priv(sccp_inst->scu, sccp_inst);
 	return 0;
 }
 
-static void ss7_inst_free(struct bsc_nat_ss7_inst *inst)
+static void sccp_inst_free(struct bsc_nat_sccp_inst *sccp_inst)
 {
-	if (inst->scu) {
-		osmo_sccp_user_unbind(inst->scu);
-		inst->scu = NULL;
+	if (sccp_inst->scu) {
+		osmo_sccp_user_unbind(sccp_inst->scu);
+		sccp_inst->scu = NULL;
 	}
 
-	struct osmo_ss7_instance *ss7 = osmo_ss7_instance_find(inst->ss7_id);
-	if (ss7)
-		osmo_ss7_instance_destroy(ss7);
+	struct osmo_ss7_instance *ss7_inst = osmo_ss7_instance_find(sccp_inst->ss7_id);
+	if (ss7_inst)
+		osmo_ss7_instance_destroy(ss7_inst);
 
-	talloc_free(inst);
+	talloc_free(sccp_inst);
 }
 
 static void st_starting_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct bsc_nat *bsc_nat = (struct bsc_nat *)fi->priv;
 
-	if (ss7_inst_init(bsc_nat->cn, "OsmoBSCNAT-CN", DEFAULT_PC_CN, OSMO_SCCP_SSN_BSSAP) < 0) {
+	if (sccp_inst_init(bsc_nat->cn, "OsmoBSCNAT-CN", DEFAULT_PC_CN, OSMO_SCCP_SSN_BSSAP) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}
 
-	if (ss7_inst_init(bsc_nat->ran, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, OSMO_SCCP_SSN_BSSAP) < 0) {
+	if (sccp_inst_init(bsc_nat->ran, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, OSMO_SCCP_SSN_BSSAP) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}
@@ -309,10 +309,10 @@ static void st_stopped_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct bsc_nat *bsc_nat = (struct bsc_nat *)fi->priv;
 
-	ss7_inst_free(bsc_nat->cn);
+	sccp_inst_free(bsc_nat->cn);
 	bsc_nat->cn = NULL;
 
-	ss7_inst_free(bsc_nat->ran);
+	sccp_inst_free(bsc_nat->ran);
 	bsc_nat->ran = NULL;
 }
 

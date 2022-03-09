@@ -22,7 +22,7 @@
 #include <osmocom/sigtran/sccp_sap.h>
 
 
-struct bsc_nat_ss7_inst {
+struct bsc_nat_sccp_inst {
 	uint32_t ss7_id;
 	struct osmo_sccp_addr local_sccp_addr;
 	struct osmo_sccp_user *scu;
@@ -31,8 +31,8 @@ struct bsc_nat_ss7_inst {
 struct bsc_nat {
 	struct osmo_fsm_inst *fi;
 
-	struct bsc_nat_ss7_inst *cn;
-	struct bsc_nat_ss7_inst *ran;
+	struct bsc_nat_sccp_inst *cn;
+	struct bsc_nat_sccp_inst *ran;
 };
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
