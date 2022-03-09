@@ -52,3 +52,13 @@ void bsc_nat_free(struct bsc_nat *bsc_nat)
 
 	talloc_free(bsc_nat);
 }
+
+const char *bsc_nat_print_addr(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr)
+{
+	static char buf[25];
+
+	snprintf(buf, sizeof(buf), "PC=%s in %s", osmo_ss7_pointcode_print(NULL, addr->pc),
+		 sccp_inst == g_bsc_nat->cn ? "CN" : "RAN");
+
+	return buf;
+}

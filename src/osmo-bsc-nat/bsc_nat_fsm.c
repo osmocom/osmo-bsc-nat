@@ -134,9 +134,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
 			goto error;
 
-		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(dest, &peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(dest->scu, prim->u.connect.conn_id, &dest->local_sccp_addr, &peer_addr_out,
@@ -153,9 +151,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
 			goto error;
 
-		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(dest, &peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_resp(dest->scu, prim->u.connect.conn_id, &peer_addr_out, oph->msg->data,
@@ -168,9 +164,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOG_SCCP(src, NULL, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(dest, &peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_data(dest->scu, prim->u.data.conn_id, oph->msg->data, msgb_length(oph->msg));
@@ -182,9 +176,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(src, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOG_SCCP(src, NULL, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(dest, &peer_addr_out));
 
 		osmo_sccp_tx_disconn(dest->scu, prim->u.disconnect.conn_id, &prim->u.disconnect.responding_addr,
 				     prim->u.disconnect.cause);
@@ -198,9 +190,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(src, peer_addr_in, &peer_addr_out) < 0)
 			goto error;
 
-		LOG_SCCP(src, peer_addr_in, LOGL_NOTICE, "Forwarding to %s in %s\n",
-			 osmo_sccp_inst_addr_name(NULL, &peer_addr_out),
-			 dest == g_bsc_nat->ran ? "RAN" : "CN");
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(dest, &peer_addr_out));
 
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */

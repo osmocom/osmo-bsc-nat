@@ -40,5 +40,7 @@ struct bsc_nat {
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
 void bsc_nat_free(struct bsc_nat *bsc_nat);
 
+const char *bsc_nat_print_addr(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr);
+
 extern void *tall_bsc_nat_ctx;
 extern struct bsc_nat *g_bsc_nat;
