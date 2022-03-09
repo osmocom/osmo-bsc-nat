@@ -57,10 +57,10 @@ static struct bsc_nat_sccp_inst *sccp_inst_dest(struct bsc_nat_sccp_inst *src)
 static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_sccp_addr **peer_addr_in,
 				     struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
 {
-	if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, called_addr) != 0) {
+	if (osmo_sccp_addr_ri_cmp(&src->addr, called_addr) != 0) {
 		*peer_addr_in = called_addr;
 		return 0;
-	} else if (osmo_sccp_addr_ri_cmp(&src->local_sccp_addr, calling_addr) != 0) {
+	} else if (osmo_sccp_addr_ri_cmp(&src->addr, calling_addr) != 0) {
 		*peer_addr_in = calling_addr;
 		return 0;
 	}
@@ -73,7 +73,7 @@ static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_
 
 	LOGP(DMAIN, LOGL_ERROR, "Invalid connection oriented message, locally configured address %s"
 	     " is neither called address %s nor calling address %s!\n",
-	     osmo_sccp_inst_addr_name(NULL, &src->local_sccp_addr), buf_called, buf_calling);
+	     osmo_sccp_inst_addr_name(NULL, &src->addr), buf_called, buf_calling);
 	return -1;
 }
 
@@ -127,7 +127,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(g_bsc_nat->ran->scu,
 				      prim->u.connect.conn_id,
-				      &g_bsc_nat->ran->local_sccp_addr,
+				      &g_bsc_nat->ran->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -196,7 +196,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		 * unitdata msg and send it again. */
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_unitdata(g_bsc_nat->ran->scu,
-				      &g_bsc_nat->ran->local_sccp_addr,
+				      &g_bsc_nat->ran->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -241,7 +241,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(g_bsc_nat->cn->scu,
 				      prim->u.connect.conn_id,
-				      &g_bsc_nat->cn->local_sccp_addr,
+				      &g_bsc_nat->cn->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -310,7 +310,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		 * unitdata msg and send it again. */
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_unitdata(g_bsc_nat->cn->scu,
-				      &g_bsc_nat->cn->local_sccp_addr,
+				      &g_bsc_nat->cn->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -345,7 +345,7 @@ static int sccp_inst_init(struct bsc_nat_sccp_inst *sccp_inst, const char *name,
 
 	sccp_inst->ss7_inst = osmo_ss7_instance_find(sccp_inst->ss7_id);
 
-	osmo_sccp_local_addr_by_instance(&sccp_inst->local_sccp_addr, sccp, ssn);
+	osmo_sccp_local_addr_by_instance(&sccp_inst->addr, sccp, ssn);
 
 	sccp_inst->scu = osmo_sccp_user_bind(sccp, name, prim_cb, ssn);
 	if (!sccp_inst->scu) {
