@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include <inttypes.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/bsc_nat/bsc.h>
@@ -25,6 +26,7 @@
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/logging.h>
 #include <osmocom/bsc_nat/msc.h>
+#include <osmocom/bsc_nat/subscr_conn.h>
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 {
@@ -41,6 +43,7 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 	OSMO_ASSERT(bsc_nat->ran.sccp_inst);
 	talloc_set_name_const(bsc_nat->ran.sccp_inst, "struct bsc_nat_sccp_inst (RAN)");
 
+	INIT_LLIST_HEAD(&bsc_nat->subscr_conns);
 	INIT_LLIST_HEAD(&bsc_nat->cn.mscs);
 	INIT_LLIST_HEAD(&bsc_nat->ran.bscs);
 
@@ -51,12 +54,17 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 
 void bsc_nat_free(struct bsc_nat *bsc_nat)
 {
+	struct subscr_conn *subscr_conn, *s;
 	struct msc *msc, *m;
 	struct bsc *bsc, *b;
 
 	if (bsc_nat->fi) {
 		osmo_fsm_inst_free(bsc_nat->fi);
 		bsc_nat->fi = NULL;
+	}
+
+	llist_for_each_entry_safe(subscr_conn, s, &bsc_nat->subscr_conns, list) {
+		subscr_conn_free(subscr_conn);
 	}
 
 	llist_for_each_entry_safe(msc, m, &bsc_nat->cn.mscs, list) {

@@ -37,14 +37,17 @@ struct bsc_nat_sccp_inst {
 
 struct bsc_nat {
 	struct osmo_fsm_inst *fi;
+	struct llist_head subscr_conns; /* list of struct subscr_conn */
 
 	struct {
 		struct bsc_nat_sccp_inst *sccp_inst;
+		uint32_t subscr_conn_id_next;
 		struct llist_head mscs; /* list of struct msc */
 	} cn;
 
 	struct {
 		struct bsc_nat_sccp_inst *sccp_inst;
+		uint32_t subscr_conn_id_next;
 		struct llist_head bscs; /* list of struct bsc */
 	} ran;
 };

@@ -22,6 +22,7 @@
 #include <osmocom/bsc_nat/msc.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/logging.h>
+#include <osmocom/bsc_nat/subscr_conn.h>
 
 extern struct osmo_fsm msc_fsm;
 
@@ -70,9 +71,20 @@ struct msc *msc_get(void)
 	return llist_first_entry(&g_bsc_nat->cn.mscs, struct msc, list);
 }
 
+void msc_free_subscr_conn_all(struct msc *msc)
+{
+	struct subscr_conn *subscr_conn;
+
+	llist_for_each_entry(subscr_conn, &g_bsc_nat->subscr_conns, list) {
+		if (subscr_conn->cn.msc == msc)
+			subscr_conn_free(subscr_conn);
+	}
+}
+
 void msc_free(struct msc *msc)
 {
 	LOGP(DMAIN, LOGL_DEBUG, "Del %s\n", talloc_get_name(msc));
+	msc_free_subscr_conn_all(msc);
 	llist_del(&msc->list);
 	osmo_fsm_inst_free(msc->fi);
 	talloc_free(msc);

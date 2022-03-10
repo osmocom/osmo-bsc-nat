@@ -19,17 +19,20 @@
 
 #include "config.h"
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <osmocom/core/fsm.h>
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/sigtran/osmo_ss7.h>
 #include <osmocom/sigtran/sccp_helpers.h>
+#include <osmocom/bsc_nat/bsc.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/bssap.h>
 #include <osmocom/bsc_nat/logging.h>
 #include <osmocom/bsc_nat/msc.h>
+#include <osmocom/bsc_nat/subscr_conn.h>
 
 #define DEFAULT_PC_RAN "0.23.1" /* same as default for OsmoMSC */
 #define DEFAULT_PC_CN "0.23.3" /* same as default for OsmoBSC */
@@ -46,13 +49,6 @@ enum bsc_nat_fsm_events {
 	BSC_NAT_FSM_EV_START,
 	BSC_NAT_FSM_EV_STOP,
 };
-
-static struct bsc_nat_sccp_inst *sccp_inst_dest(struct bsc_nat_sccp_inst *src)
-{
-	if (src == g_bsc_nat->cn.sccp_inst)
-		return g_bsc_nat->ran.sccp_inst;
-	return g_bsc_nat->cn.sccp_inst;
-}
 
 /* For connection-oriented messages, figure out which side is not the BSCNAT,
  * either the called_addr or calling_addr. */
@@ -79,37 +75,13 @@ static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_
 	return -1;
 }
 
-/* Figure out who will receive the message.
- * For now this is simplified by assuming there is only one MSC, one BSC. */
-static int sccp_sap_get_peer_addr_out(struct bsc_nat_sccp_inst *src, struct osmo_sccp_addr *peer_addr_in,
-				      struct osmo_sccp_addr *peer_addr_out)
-{
-	struct bsc_nat_sccp_inst *dest = sccp_inst_dest(src);
-
-	if (src == g_bsc_nat->ran.sccp_inst) {
-		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest->ss7_inst) < 0) {
-			LOGP(DMAIN, LOGL_ERROR, "Could not find MSC in address book\n");
-			return -1;
-		}
-	} else {
-		if (osmo_sccp_addr_by_name_local(peer_addr_out, "bsc", dest->ss7_inst) < 0) {
-			LOGP(DMAIN, LOGL_ERROR, "Could not find BSC in address book\n");
-			return -2;
-		}
-	}
-
-	return 0;
-}
-
-/* Handle incoming messages from CN (MSC). For now this is simplified by
- * assuming there is only one MSC, one BSC (not yet translating connection ids
- * etc.). */
+/* Handle incoming messages from CN (MSC) */
 static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = osmo_sccp_user_get_priv(scu);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_sccp_addr *addr; /* MSC's address */
-	struct osmo_sccp_addr peer_addr_out;
+	struct subscr_conn *subscr_conn;
 	int rc = -1;
 
 	LOGP(DMAIN, LOGL_DEBUG, "Rx %s from CN\n", osmo_scu_prim_name(oph));
@@ -117,23 +89,9 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
-		if (sccp_sap_get_peer_addr_in(sccp_inst, &addr, &prim->u.connect.called_addr,
-					      &prim->u.connect.calling_addr) < 0)
-			goto error;
-
-		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
-			goto error;
-
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
-
-		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_req(g_bsc_nat->ran.sccp_inst->scu,
-				      prim->u.connect.conn_id,
-				      &g_bsc_nat->ran.sccp_inst->addr,
-				      &peer_addr_out,
-				      oph->msg->data,
-				      msgb_length(oph->msg));
-		rc = 0;
+		/* FIXME: MSC has sent a message without conn_id, figure out to
+		 * which BSC to forward this. */
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, osmo_scu_prim_name(oph));
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
@@ -142,15 +100,19 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 					      &prim->u.connect.calling_addr) < 0)
 			goto error;
 
-		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.connect.conn_id, BSC_NAT_NET_CN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.connect.conn_id,
+			     bsc_nat_print_addr_cn(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_resp(g_bsc_nat->ran.sccp_inst->scu,
-				       prim->u.connect.conn_id,
-				       &peer_addr_out,
+				       subscr_conn->ran.id,
+				       &subscr_conn->ran.bsc->addr,
 				       oph->msg->data,
 				       msgb_length(oph->msg));
 		rc = 0;
@@ -158,14 +120,18 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
-		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.data.conn_id, BSC_NAT_NET_CN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.data.conn_id,
+			     bsc_nat_print_addr_cn(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_data(g_bsc_nat->ran.sccp_inst->scu,
-				  prim->u.data.conn_id,
+				  subscr_conn->ran.id,
 				  oph->msg->data,
 				  msgb_length(oph->msg));
 		rc = 0;
@@ -173,15 +139,22 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
-		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.disconnect.conn_id, BSC_NAT_NET_CN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.disconnect.conn_id,
+			     bsc_nat_print_addr_cn(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		osmo_sccp_tx_disconn(g_bsc_nat->ran.sccp_inst->scu,
-				     prim->u.disconnect.conn_id,
-				     &prim->u.disconnect.responding_addr,
+				     subscr_conn->ran.id,
+				     &g_bsc_nat->ran.sccp_inst->addr,
 				     prim->u.disconnect.cause);
+
+		subscr_conn_free(subscr_conn);
+
 		rc = 0;
 		break;
 
@@ -200,16 +173,15 @@ error:
 	return rc;
 }
 
-/* Handle incoming messages from RAN (BSC). For now this is simplified by
- * assuming there is only one MSC, one BSC (not yet translating connection ids
- * etc.). */
+/* Handle incoming messages from RAN (BSC) */
 static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = osmo_sccp_user_get_priv(scu);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_sccp_addr *addr; /* BSC's address */
-	struct osmo_sccp_addr peer_addr_out;
+	struct subscr_conn *subscr_conn;
 	struct msc *msc;
+	struct bsc *bsc;
 	int rc = -1;
 
 	LOGP(DMAIN, LOGL_DEBUG, "Rx %s from RAN\n", osmo_scu_prim_name(oph));
@@ -227,16 +199,25 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 					      &prim->u.connect.calling_addr) < 0)
 			goto error;
 
-		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
-			goto error;
+		bsc = bsc_get_by_pc(addr->pc);
+		if (!bsc)
+			bsc = bsc_alloc(addr);
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
+		if (subscr_conn_get_by_id(prim->u.connect.conn_id, BSC_NAT_NET_RAN)) {
+			LOGP(DMAIN, LOGL_ERROR, "%s attempted to create new connection with already used"
+				 " conn_id=%" PRIu32 ", ignoring\n", talloc_get_name(bsc), prim->u.connect.conn_id);
+			goto error;
+		}
+
+		subscr_conn = subscr_conn_alloc(msc, bsc, subscr_conn_get_next_id(BSC_NAT_NET_CN), prim->u.connect.conn_id);
+
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(g_bsc_nat->cn.sccp_inst->scu,
-				      prim->u.connect.conn_id,
+				      subscr_conn->cn.id,
 				      &g_bsc_nat->cn.sccp_inst->addr,
-				      &peer_addr_out,
+				      &subscr_conn->cn.msc->addr,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
 		rc = 0;
@@ -248,15 +229,19 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 					      &prim->u.connect.calling_addr) < 0)
 			goto error;
 
-		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.connect.conn_id, BSC_NAT_NET_RAN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.connect.conn_id,
+			     bsc_nat_print_addr_ran(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_resp(g_bsc_nat->cn.sccp_inst->scu,
-				       prim->u.connect.conn_id,
-				       &peer_addr_out,
+				       subscr_conn->cn.id,
+				       &subscr_conn->cn.msc->addr,
 				       oph->msg->data,
 				       msgb_length(oph->msg));
 		rc = 0;
@@ -264,14 +249,18 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
-		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.data.conn_id, BSC_NAT_NET_RAN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.data.conn_id,
+			     bsc_nat_print_addr_ran(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_data(g_bsc_nat->cn.sccp_inst->scu,
-				  prim->u.data.conn_id,
+				  subscr_conn->cn.id,
 				  oph->msg->data,
 				  msgb_length(oph->msg));
 		rc = 0;
@@ -279,15 +268,22 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
-		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
+		subscr_conn = subscr_conn_get_by_id(prim->u.disconnect.conn_id, BSC_NAT_NET_RAN);
+		if (!subscr_conn) {
+			LOGP(DMAIN, LOGL_ERROR, "Unknown conn_id=%" PRIu32 " from %s\n", prim->u.disconnect.conn_id,
+			     bsc_nat_print_addr_ran(addr));
 			goto error;
+		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
 		osmo_sccp_tx_disconn(g_bsc_nat->cn.sccp_inst->scu,
-				     prim->u.disconnect.conn_id,
-				     &prim->u.disconnect.responding_addr,
+				     subscr_conn->cn.id,
+				     &g_bsc_nat->cn.sccp_inst->addr,
 				     prim->u.disconnect.cause);
+
+		subscr_conn_free(subscr_conn);
+
 		rc = 0;
 		break;
 

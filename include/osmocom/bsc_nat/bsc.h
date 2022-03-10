@@ -29,3 +29,4 @@ struct bsc {
 struct bsc *bsc_alloc(struct osmo_sccp_addr *addr);
 struct bsc *bsc_get_by_pc(uint32_t pointcode);
 void bsc_free(struct bsc *bsc);
+void bsc_free_subscr_conn_all(struct bsc *bsc);

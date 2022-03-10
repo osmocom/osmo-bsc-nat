@@ -33,6 +33,7 @@ osmo_bsc_nat_SOURCES = \
 	main.c \
 	msc.c \
 	msc_fsm.c \
+	subscr_conn.c \
 	vty.c \
 	$(NULL)
 

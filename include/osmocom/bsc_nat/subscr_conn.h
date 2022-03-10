@@ -19,24 +19,25 @@
 
 #pragma once
 
-#include <osmocom/core/fsm.h>
-#include <osmocom/sigtran/sccp_sap.h>
-
-struct msc {
+/* connection for one subscriber */
+struct subscr_conn {
 	struct llist_head list;
-	struct osmo_sccp_addr addr;
-	struct osmo_fsm_inst *fi;
+
+	struct {
+		uint32_t id;
+		struct msc *msc;
+	} cn;
+
+	struct {
+		uint32_t id;
+		struct bsc *bsc;
+	} ran;
 };
 
-struct msc *msc_alloc(struct osmo_sccp_addr *addr);
-int msc_alloc_from_addr_book(void);
+int subscr_conn_get_next_id(enum bsc_nat_net net);
 
-struct msc *msc_get(void);
+struct subscr_conn *subscr_conn_alloc(struct msc *msc, struct bsc *bsc, uint32_t id_cn, uint32_t id_ran);
 
-void msc_tx_reset(struct msc *msc);
-void msc_rx_reset_ack(struct msc *msc);
+struct subscr_conn *subscr_conn_get_by_id(uint32_t id, enum bsc_nat_net net);
 
-bool msc_is_connected(struct msc *msc);
-
-void msc_free(struct msc *msc);
-void msc_free_subscr_conn_all(struct msc *msc);
+void subscr_conn_free(struct subscr_conn *subscr_conn);
