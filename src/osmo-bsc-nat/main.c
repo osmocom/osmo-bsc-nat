@@ -30,6 +30,7 @@
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/logging.h>
+#include <osmocom/bsc_nat/msc.h>
 #include <osmocom/bsc_nat/vty.h>
 
 static const char *const copyright =
@@ -198,6 +199,9 @@ int main(int argc, char **argv)
 	signal_handler_init();
 
 	bsc_nat_fsm_start(g_bsc_nat);
+
+	if (msc_alloc_from_addr_book() < 0)
+		exit(1);
 
 	while (!osmo_select_shutdown_done())
 		osmo_select_main_ctx(0);

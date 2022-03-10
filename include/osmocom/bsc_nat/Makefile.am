@@ -4,5 +4,6 @@ noinst_HEADERS = \
 	bsc_nat_fsm.h \
 	bssap.h \
 	logging.h \
+	msc.h \
 	vty.h \
 	$(NULL)

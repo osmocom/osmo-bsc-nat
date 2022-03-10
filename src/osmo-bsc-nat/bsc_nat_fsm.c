@@ -186,22 +186,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-less data received */
-		addr = &prim->u.unitdata.calling_addr;
-
-		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
-			goto error;
-
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
-
-		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
-		 * unitdata msg and send it again. */
-		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_unitdata(g_bsc_nat->ran.sccp_inst->scu,
-				      &g_bsc_nat->ran.sccp_inst->addr,
-				      &peer_addr_out,
-				      oph->msg->data,
-				      msgb_length(oph->msg));
-		rc = 0;
+		rc = bssap_handle_udt(sccp_inst, &prim->u.unitdata.calling_addr, oph->msg, msgb_l2len(oph->msg));
 		break;
 
 	default:

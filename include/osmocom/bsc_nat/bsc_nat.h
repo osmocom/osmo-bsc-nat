@@ -40,6 +40,7 @@ struct bsc_nat {
 
 	struct {
 		struct bsc_nat_sccp_inst *sccp_inst;
+		struct llist_head mscs; /* list of struct msc */
 	} cn;
 
 	struct {
