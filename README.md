@@ -42,6 +42,29 @@ Please observe the
 [Osmocom Mailing List Rules](https://osmocom.org/projects/cellular-infrastructure/wiki/Mailing_List_Rules)
 when posting.
 
+Manual Testing With osmo-dev
+----------
+
+With [osmo-dev](https://git.osmocom.org/osmo-dev/) it is possible to
+build all Osmocom components for a full test network with OsmoBSCNAT,
+and run the network on your PC. Set up the make directory as described
+in osmo-dev's README, then build components with:
+
+```
+$ make cn-bsc-nat
+```
+
+Set up a network as described in osmo-dev's net/README, then put the
+following in your configuration to let it run osmo-bsc-nat with one
+virtual BSC, BTS and MS (can be used next to a real BSC/BTS/MS):
+
+```
+BSC_COUNT=2
+BTS1_RUN_IN_OSMO_DEV=1
+STP_RAN_IP="127.0.0.2"
+MS_RUN_IN_OSMO_DEV=1
+```
+
 Contributing
 ------------
 
