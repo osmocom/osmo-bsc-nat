@@ -52,14 +52,14 @@ enum bsc_nat_fsm_events {
 
 /* For connection-oriented messages, figure out which side is not the BSCNAT,
  * either the called_addr or calling_addr. */
-static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_sccp_addr **peer_addr_in,
-				     struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
+static int get_peer_addr(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr **addr,
+			 struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr)
 {
-	if (osmo_sccp_addr_ri_cmp(&src->addr, called_addr) != 0) {
-		*peer_addr_in = called_addr;
+	if (osmo_sccp_addr_ri_cmp(&sccp_inst->addr, called_addr) != 0) {
+		*addr = called_addr;
 		return 0;
-	} else if (osmo_sccp_addr_ri_cmp(&src->addr, calling_addr) != 0) {
-		*peer_addr_in = calling_addr;
+	} else if (osmo_sccp_addr_ri_cmp(&sccp_inst->addr, calling_addr) != 0) {
+		*addr = calling_addr;
 		return 0;
 	}
 
@@ -71,7 +71,7 @@ static int sccp_sap_get_peer_addr_in(struct bsc_nat_sccp_inst *src, struct osmo_
 
 	LOGP(DMAIN, LOGL_ERROR, "Invalid connection oriented message, locally configured address %s"
 	     " is neither called address %s nor calling address %s!\n",
-	     osmo_sccp_inst_addr_name(NULL, &src->addr), buf_called, buf_calling);
+	     osmo_sccp_inst_addr_name(NULL, &sccp_inst->addr), buf_called, buf_calling);
 	return -1;
 }
 
@@ -96,8 +96,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
 		/* indication of connection confirm */
-		if (sccp_sap_get_peer_addr_in(sccp_inst, &addr, &prim->u.connect.called_addr,
-					      &prim->u.connect.calling_addr) < 0)
+		if (get_peer_addr(sccp_inst, &addr, &prim->u.connect.called_addr, &prim->u.connect.calling_addr) < 0)
 			goto error;
 
 		subscr_conn = subscr_conn_get_by_id(prim->u.connect.conn_id, BSC_NAT_NET_CN);
@@ -195,8 +194,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request */
-		if (sccp_sap_get_peer_addr_in(sccp_inst, &addr, &prim->u.connect.called_addr,
-					      &prim->u.connect.calling_addr) < 0)
+		if (get_peer_addr(sccp_inst, &addr, &prim->u.connect.called_addr, &prim->u.connect.calling_addr) < 0)
 			goto error;
 
 		bsc = bsc_get_by_pc(addr->pc);
@@ -225,8 +223,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
 		/* indication of connection confirm */
-		if (sccp_sap_get_peer_addr_in(sccp_inst, &addr, &prim->u.connect.called_addr,
-					      &prim->u.connect.calling_addr) < 0)
+		if (get_peer_addr(sccp_inst, &addr, &prim->u.connect.called_addr, &prim->u.connect.calling_addr) < 0)
 			goto error;
 
 		subscr_conn = subscr_conn_get_by_id(prim->u.connect.conn_id, BSC_NAT_NET_RAN);
