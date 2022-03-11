@@ -36,4 +36,6 @@ struct msc *msc_get(void);
 void msc_tx_reset(struct msc *msc);
 void msc_rx_reset_ack(struct msc *msc);
 
+bool msc_is_connected(struct msc *msc);
+
 void msc_free(struct msc *msc);

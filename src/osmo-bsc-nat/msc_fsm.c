@@ -152,3 +152,8 @@ void msc_rx_reset_ack(struct msc *msc)
 {
 	osmo_fsm_inst_dispatch(msc->fi, MSC_FSM_EV_RX_RESET_ACK, NULL);
 }
+
+bool msc_is_connected(struct msc *msc)
+{
+	return msc->fi->state == MSC_FSM_ST_CONNECTED;
+}

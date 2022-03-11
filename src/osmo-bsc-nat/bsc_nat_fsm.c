@@ -29,6 +29,7 @@
 #include <osmocom/bsc_nat/bsc_nat_fsm.h>
 #include <osmocom/bsc_nat/bssap.h>
 #include <osmocom/bsc_nat/logging.h>
+#include <osmocom/bsc_nat/msc.h>
 
 #define DEFAULT_PC_RAN "0.23.1" /* same as default for OsmoMSC */
 #define DEFAULT_PC_CN "0.23.3" /* same as default for OsmoBSC */
@@ -208,9 +209,16 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_sccp_addr *addr; /* BSC's address */
 	struct osmo_sccp_addr peer_addr_out;
+	struct msc *msc;
 	int rc = -1;
 
 	LOGP(DMAIN, LOGL_DEBUG, "Rx %s from RAN\n", osmo_scu_prim_name(oph));
+
+	msc = msc_get();
+	if (!msc_is_connected(msc)) {
+		LOGP(DMAIN, LOGL_DEBUG, "Ignoring message from RAN, MSC is not connected yet\n");
+		goto error;
+	}
 
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
