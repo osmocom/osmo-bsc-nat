@@ -32,6 +32,7 @@ osmo_bsc_nat_SOURCES = \
 	logging.c \
 	main.c \
 	msc.c \
+	msc_fsm.c \
 	vty.c \
 	$(NULL)
 

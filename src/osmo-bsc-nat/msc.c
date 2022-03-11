@@ -23,6 +23,8 @@
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/logging.h>
 
+extern struct osmo_fsm msc_fsm;
+
 struct msc *msc_alloc(struct osmo_sccp_addr *addr)
 {
 	struct msc *msc = talloc_zero(g_bsc_nat, struct msc);
@@ -36,6 +38,11 @@ struct msc *msc_alloc(struct osmo_sccp_addr *addr)
 
 	INIT_LLIST_HEAD(&msc->list);
 	llist_add(&msc->list, &g_bsc_nat->cn.mscs);
+
+	msc->fi = osmo_fsm_inst_alloc(&msc_fsm, msc, msc, LOGL_INFO, NULL);
+	OSMO_ASSERT(msc->fi);
+
+	msc_tx_reset(msc);
 
 	return msc;
 }
@@ -67,5 +74,6 @@ void msc_free(struct msc *msc)
 {
 	LOGP(DMAIN, LOGL_DEBUG, "Del %s\n", talloc_get_name(msc));
 	llist_del(&msc->list);
+	osmo_fsm_inst_free(msc->fi);
 	talloc_free(msc);
 }
