@@ -22,6 +22,11 @@
 #include <osmocom/core/fsm.h>
 #include <osmocom/sigtran/sccp_sap.h>
 
+enum bsc_nat_net {
+	BSC_NAT_NET_CN = 0,
+	BSC_NAT_NET_RAN
+};
+
 struct bsc_nat_sccp_inst {
 	uint32_t ss7_id;
 	struct osmo_ss7_instance *ss7_inst;
@@ -40,7 +45,9 @@ struct bsc_nat {
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx);
 void bsc_nat_free(struct bsc_nat *bsc_nat);
 
-const char *bsc_nat_print_addr(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr);
+#define bsc_nat_print_addr_cn(addr) bsc_nat_print_addr(BSC_NAT_NET_CN, addr)
+#define bsc_nat_print_addr_ran(addr) bsc_nat_print_addr(BSC_NAT_NET_RAN, addr)
+const char *bsc_nat_print_addr(enum bsc_nat_net net, struct osmo_sccp_addr *addr);
 
 extern void *tall_bsc_nat_ctx;
 extern struct bsc_nat *g_bsc_nat;

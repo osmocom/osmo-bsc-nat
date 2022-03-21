@@ -29,9 +29,9 @@ static int bssap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg,
 {
 	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran;
 
-	LOGP(DMAIN, LOGL_NOTICE, "Rx RESET from %s\n", bsc_nat_print_addr(sccp_inst, addr));
+	LOGP(DMAIN, LOGL_NOTICE, "Rx RESET from %s\n", bsc_nat_print_addr_ran(addr));
 
-	LOGP(DMAIN, LOGL_NOTICE, "Tx RESET ACK to %s\n", bsc_nat_print_addr(sccp_inst, addr));
+	LOGP(DMAIN, LOGL_NOTICE, "Tx RESET ACK to %s\n", bsc_nat_print_addr_ran(addr));
 	msg = gsm0808_create_reset_ack();
 	return osmo_sccp_tx_unitdata_msg(sccp_inst->scu, &sccp_inst->addr, addr, msg);
 }

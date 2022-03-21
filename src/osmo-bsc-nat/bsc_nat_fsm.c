@@ -123,7 +123,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->ran, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(g_bsc_nat->ran->scu,
@@ -144,7 +144,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->ran, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_resp(g_bsc_nat->ran->scu,
@@ -160,7 +160,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->ran, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_data(g_bsc_nat->ran->scu,
@@ -175,7 +175,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->ran, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		osmo_sccp_tx_disconn(g_bsc_nat->ran->scu,
 				     prim->u.disconnect.conn_id,
@@ -191,7 +191,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->ran, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */
@@ -237,7 +237,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->cn, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_req(g_bsc_nat->cn->scu,
@@ -258,7 +258,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->cn, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_conn_resp(g_bsc_nat->cn->scu,
@@ -274,7 +274,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->cn, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
 		osmo_sccp_tx_data(g_bsc_nat->cn->scu,
@@ -289,7 +289,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, NULL, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->cn, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		osmo_sccp_tx_disconn(g_bsc_nat->cn->scu,
 				     prim->u.disconnect.conn_id,
@@ -309,7 +309,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		if (sccp_sap_get_peer_addr_out(sccp_inst, addr, &peer_addr_out) < 0)
 			goto error;
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr(g_bsc_nat->cn, &peer_addr_out));
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */
