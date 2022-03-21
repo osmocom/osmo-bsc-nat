@@ -30,13 +30,13 @@ struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 	bsc_nat = talloc_zero(tall_ctx, struct bsc_nat);
 	OSMO_ASSERT(bsc_nat);
 
-	bsc_nat->cn = talloc_zero(bsc_nat, struct bsc_nat_sccp_inst);
-	OSMO_ASSERT(bsc_nat->cn);
-	talloc_set_name_const(bsc_nat->cn, "struct bsc_nat_sccp_inst (CN)");
+	bsc_nat->cn.sccp_inst = talloc_zero(bsc_nat, struct bsc_nat_sccp_inst);
+	OSMO_ASSERT(bsc_nat->cn.sccp_inst);
+	talloc_set_name_const(bsc_nat->cn.sccp_inst, "struct bsc_nat_sccp_inst (CN)");
 
-	bsc_nat->ran = talloc_zero(bsc_nat, struct bsc_nat_sccp_inst);
-	OSMO_ASSERT(bsc_nat->ran);
-	talloc_set_name_const(bsc_nat->ran, "struct bsc_nat_sccp_inst (RAN)");
+	bsc_nat->ran.sccp_inst = talloc_zero(bsc_nat, struct bsc_nat_sccp_inst);
+	OSMO_ASSERT(bsc_nat->ran.sccp_inst);
+	talloc_set_name_const(bsc_nat->ran.sccp_inst, "struct bsc_nat_sccp_inst (RAN)");
 
 	bsc_nat_fsm_alloc(bsc_nat);
 

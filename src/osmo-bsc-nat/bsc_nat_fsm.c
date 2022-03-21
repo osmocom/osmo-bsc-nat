@@ -48,9 +48,9 @@ enum bsc_nat_fsm_events {
 
 static struct bsc_nat_sccp_inst *sccp_inst_dest(struct bsc_nat_sccp_inst *src)
 {
-	if (src == g_bsc_nat->cn)
-		return g_bsc_nat->ran;
-	return g_bsc_nat->cn;
+	if (src == g_bsc_nat->cn.sccp_inst)
+		return g_bsc_nat->ran.sccp_inst;
+	return g_bsc_nat->cn.sccp_inst;
 }
 
 /* For connection-oriented messages, figure out which side is not the BSCNAT,
@@ -85,7 +85,7 @@ static int sccp_sap_get_peer_addr_out(struct bsc_nat_sccp_inst *src, struct osmo
 {
 	struct bsc_nat_sccp_inst *dest = sccp_inst_dest(src);
 
-	if (src == g_bsc_nat->ran) {
+	if (src == g_bsc_nat->ran.sccp_inst) {
 		if (osmo_sccp_addr_by_name_local(peer_addr_out, "msc", dest->ss7_inst) < 0) {
 			LOGP(DMAIN, LOGL_ERROR, "Could not find MSC in address book\n");
 			return -1;
@@ -126,9 +126,9 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_req(g_bsc_nat->ran->scu,
+		osmo_sccp_tx_conn_req(g_bsc_nat->ran.sccp_inst->scu,
 				      prim->u.connect.conn_id,
-				      &g_bsc_nat->ran->addr,
+				      &g_bsc_nat->ran.sccp_inst->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -147,7 +147,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_resp(g_bsc_nat->ran->scu,
+		osmo_sccp_tx_conn_resp(g_bsc_nat->ran.sccp_inst->scu,
 				       prim->u.connect.conn_id,
 				       &peer_addr_out,
 				       oph->msg->data,
@@ -163,7 +163,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_data(g_bsc_nat->ran->scu,
+		osmo_sccp_tx_data(g_bsc_nat->ran.sccp_inst->scu,
 				  prim->u.data.conn_id,
 				  oph->msg->data,
 				  msgb_length(oph->msg));
@@ -177,7 +177,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_ran(&peer_addr_out));
 
-		osmo_sccp_tx_disconn(g_bsc_nat->ran->scu,
+		osmo_sccp_tx_disconn(g_bsc_nat->ran.sccp_inst->scu,
 				     prim->u.disconnect.conn_id,
 				     &prim->u.disconnect.responding_addr,
 				     prim->u.disconnect.cause);
@@ -196,8 +196,8 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_unitdata(g_bsc_nat->ran->scu,
-				      &g_bsc_nat->ran->addr,
+		osmo_sccp_tx_unitdata(g_bsc_nat->ran.sccp_inst->scu,
+				      &g_bsc_nat->ran.sccp_inst->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -240,9 +240,9 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_req(g_bsc_nat->cn->scu,
+		osmo_sccp_tx_conn_req(g_bsc_nat->cn.sccp_inst->scu,
 				      prim->u.connect.conn_id,
-				      &g_bsc_nat->cn->addr,
+				      &g_bsc_nat->cn.sccp_inst->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -261,7 +261,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_conn_resp(g_bsc_nat->cn->scu,
+		osmo_sccp_tx_conn_resp(g_bsc_nat->cn.sccp_inst->scu,
 				       prim->u.connect.conn_id,
 				       &peer_addr_out,
 				       oph->msg->data,
@@ -277,7 +277,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_data(g_bsc_nat->cn->scu,
+		osmo_sccp_tx_data(g_bsc_nat->cn.sccp_inst->scu,
 				  prim->u.data.conn_id,
 				  oph->msg->data,
 				  msgb_length(oph->msg));
@@ -291,7 +291,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", bsc_nat_print_addr_cn(&peer_addr_out));
 
-		osmo_sccp_tx_disconn(g_bsc_nat->cn->scu,
+		osmo_sccp_tx_disconn(g_bsc_nat->cn.sccp_inst->scu,
 				     prim->u.disconnect.conn_id,
 				     &prim->u.disconnect.responding_addr,
 				     prim->u.disconnect.cause);
@@ -314,8 +314,8 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 		/* oph->msg stores oph and unitdata msg. Move oph->msg->data to
 		 * unitdata msg and send it again. */
 		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_unitdata(g_bsc_nat->cn->scu,
-				      &g_bsc_nat->cn->addr,
+		osmo_sccp_tx_unitdata(g_bsc_nat->cn.sccp_inst->scu,
+				      &g_bsc_nat->cn.sccp_inst->addr,
 				      &peer_addr_out,
 				      oph->msg->data,
 				      msgb_length(oph->msg));
@@ -380,12 +380,12 @@ static void st_starting_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct bsc_nat *bsc_nat = (struct bsc_nat *)fi->priv;
 
-	if (sccp_inst_init(bsc_nat->cn, "OsmoBSCNAT-CN", DEFAULT_PC_CN, sccp_sap_up_cn, OSMO_SCCP_SSN_BSSAP) < 0) {
+	if (sccp_inst_init(bsc_nat->cn.sccp_inst, "OsmoBSCNAT-CN", DEFAULT_PC_CN, sccp_sap_up_cn, OSMO_SCCP_SSN_BSSAP) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}
 
-	if (sccp_inst_init(bsc_nat->ran, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, sccp_sap_up_ran, OSMO_SCCP_SSN_BSSAP) < 0) {
+	if (sccp_inst_init(bsc_nat->ran.sccp_inst, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, sccp_sap_up_ran, OSMO_SCCP_SSN_BSSAP) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}
@@ -408,11 +408,11 @@ static void st_stopped_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct bsc_nat *bsc_nat = (struct bsc_nat *)fi->priv;
 
-	sccp_inst_free(bsc_nat->cn);
-	bsc_nat->cn = NULL;
+	sccp_inst_free(bsc_nat->cn.sccp_inst);
+	bsc_nat->cn.sccp_inst = NULL;
 
-	sccp_inst_free(bsc_nat->ran);
-	bsc_nat->ran = NULL;
+	sccp_inst_free(bsc_nat->ran.sccp_inst);
+	bsc_nat->ran.sccp_inst = NULL;
 }
 
 static void st_stopped(struct osmo_fsm_inst *fi, uint32_t event, void *data)

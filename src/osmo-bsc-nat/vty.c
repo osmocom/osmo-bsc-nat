@@ -45,8 +45,8 @@ DEFUN(cfg_bsc_nat,
 static int config_write_bsc_nat(struct vty *vty)
 {
 	vty_out(vty, "bsc-nat%s", VTY_NEWLINE);
-	vty_out(vty, " cs7-instance-cn %u%s", g_bsc_nat->cn->ss7_id, VTY_NEWLINE);
-	vty_out(vty, " cs7-instance-ran %u%s", g_bsc_nat->ran->ss7_id, VTY_NEWLINE);
+	vty_out(vty, " cs7-instance-cn %u%s", g_bsc_nat->cn.sccp_inst->ss7_id, VTY_NEWLINE);
+	vty_out(vty, " cs7-instance-ran %u%s", g_bsc_nat->ran.sccp_inst->ss7_id, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -58,7 +58,7 @@ DEFUN(cfg_cs7_instance_cn,
       "cs7-instance-cn <0-15>",
       "Set SS7 to be used to connect to CN-side\n" SS7_REF_STR)
 {
-	g_bsc_nat->cn->ss7_id = atoi(argv[0]);
+	g_bsc_nat->cn.sccp_inst->ss7_id = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -67,7 +67,7 @@ DEFUN(cfg_cs7_instance_ran,
       "cs7-instance-ran <0-15>",
       "Set SS7 to be used to connect to RAN-side\n" SS7_REF_STR)
 {
-	g_bsc_nat->ran->ss7_id = atoi(argv[0]);
+	g_bsc_nat->ran.sccp_inst->ss7_id = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 

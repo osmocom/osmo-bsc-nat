@@ -38,8 +38,13 @@ struct bsc_nat_sccp_inst {
 struct bsc_nat {
 	struct osmo_fsm_inst *fi;
 
-	struct bsc_nat_sccp_inst *cn;
-	struct bsc_nat_sccp_inst *ran;
+	struct {
+		struct bsc_nat_sccp_inst *sccp_inst;
+	} cn;
+
+	struct {
+		struct bsc_nat_sccp_inst *sccp_inst;
+	} ran;
 };
 
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx);

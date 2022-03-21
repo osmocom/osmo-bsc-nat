@@ -27,7 +27,7 @@
 
 static int bssap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
-	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran;
+	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran.sccp_inst;
 
 	LOGP(DMAIN, LOGL_NOTICE, "Rx RESET from %s\n", bsc_nat_print_addr_ran(addr));
 
