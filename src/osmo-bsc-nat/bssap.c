@@ -63,7 +63,7 @@ static int bssap_cn_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, un
 		ret = bssap_cn_handle_reset_ack(addr, msg, length);
 		break;
 	default:
-		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssap_name(msg->l3h[0]));
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssmap_name(msg->l3h[0]));
 		break;
 	}
 
@@ -96,7 +96,7 @@ static int bssap_ran_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, u
 		ret = bssap_ran_handle_reset(addr, msg, length);
 		break;
 	default:
-		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssap_name(msg->l3h[0]));
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssmap_name(msg->l3h[0]));
 		break;
 	}
 
@@ -111,7 +111,7 @@ static int bssap_rcvmsg_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_scc
 		return -1;
 	}
 
-	LOGP(DMAIN, LOGL_NOTICE, "Rx UDT BSSMAP %s\n", gsm0808_bssap_name(msg->l3h[0]));
+	LOGP(DMAIN, LOGL_NOTICE, "Rx UDT BSSMAP %s\n", gsm0808_bssmap_name(msg->l3h[0]));
 
 	if (sccp_inst == g_bsc_nat->cn.sccp_inst)
 		return bssap_cn_rcvmsg_udt(addr, msg, length);
