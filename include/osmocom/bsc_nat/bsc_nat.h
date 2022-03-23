@@ -20,6 +20,8 @@
 #pragma once
 
 #include <osmocom/core/fsm.h>
+#include <osmocom/core/tdef.h>
+#include <osmocom/mgcp_client/mgcp_client_pool.h>
 #include <osmocom/sigtran/sccp_sap.h>
 
 enum bsc_nat_net {
@@ -38,6 +40,11 @@ struct bsc_nat_sccp_inst {
 struct bsc_nat {
 	struct osmo_fsm_inst *fi;
 	struct llist_head subscr_conns; /* list of struct subscr_conn */
+
+	struct {
+		struct mgcp_client_pool *pool;
+		struct osmo_tdef *tdefs;
+	} mgw;
 
 	struct {
 		struct bsc_nat_sccp_inst *sccp_inst;
@@ -61,3 +68,4 @@ const char *bsc_nat_print_addr(enum bsc_nat_net net, struct osmo_sccp_addr *addr
 
 extern void *tall_bsc_nat_ctx;
 extern struct bsc_nat *g_bsc_nat;
+extern struct osmo_tdef_group g_bsc_nat_tdef_group[];

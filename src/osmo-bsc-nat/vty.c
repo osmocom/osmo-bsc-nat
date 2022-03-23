@@ -19,8 +19,10 @@
 
 #include "config.h"
 #include <unistd.h>
+#include <osmocom/mgcp_client/mgcp_client_pool.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/tdef_vty.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 #include <osmocom/bsc_nat/vty.h>
@@ -77,4 +79,8 @@ void bsc_nat_vty_init(void)
 	install_node(&bsc_nat_node, config_write_bsc_nat);
 	install_element(BSC_NAT_NODE, &cfg_cs7_instance_cn_cmd);
 	install_element(BSC_NAT_NODE, &cfg_cs7_instance_ran_cmd);
+
+	osmo_tdef_vty_groups_init(CONFIG_NODE, g_bsc_nat_tdef_group);
+
+	mgcp_client_pool_vty_init(CONFIG_NODE, MGW_NODE, "", g_bsc_nat->mgw.pool);
 }

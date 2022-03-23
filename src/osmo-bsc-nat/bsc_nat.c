@@ -28,12 +28,26 @@
 #include <osmocom/bsc_nat/msc.h>
 #include <osmocom/bsc_nat/subscr_conn.h>
 
+struct osmo_tdef g_mgw_tdefs[] = {
+	{ .T = -2427, .default_val = 5, .desc = "timeout for MGCP response from MGW" },
+	{}
+};
+
+struct osmo_tdef_group g_bsc_nat_tdef_group[] = {
+	{ .name = "mgw", .tdefs = g_mgw_tdefs, .desc = "MGW (Media Gateway) interface" },
+	{}
+};
+
 struct bsc_nat *bsc_nat_alloc(void *tall_ctx)
 {
 	struct bsc_nat *bsc_nat;
 
 	bsc_nat = talloc_zero(tall_ctx, struct bsc_nat);
 	OSMO_ASSERT(bsc_nat);
+
+	bsc_nat->mgw.pool = mgcp_client_pool_alloc(bsc_nat);
+	bsc_nat->mgw.tdefs = g_mgw_tdefs;
+	osmo_tdefs_reset(bsc_nat->mgw.tdefs);
 
 	bsc_nat->cn.sccp_inst = talloc_zero(bsc_nat, struct bsc_nat_sccp_inst);
 	OSMO_ASSERT(bsc_nat->cn.sccp_inst);

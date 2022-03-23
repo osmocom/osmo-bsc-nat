@@ -344,6 +344,24 @@ static void sccp_inst_free(struct bsc_nat_sccp_inst *sccp_inst)
 	talloc_free(sccp_inst);
 }
 
+static int mgw_init(struct mgcp_client_pool *pool)
+{
+	unsigned int pool_members_initialized;
+
+	/* Initialize MGW pool. This initalizes and connects all MGCP clients that are currently configured in
+	 * the pool. Adding additional MGCP clients to the pool is possible but the user has to configure and
+	 * (re)connect them manually from the VTY. */
+	pool_members_initialized = mgcp_client_pool_connect(pool);
+	if (!pool_members_initialized) {
+		LOGP(DMAIN, LOGL_ERROR, "Failed to initialize any MGW pool members!\n");
+		return -1;
+	}
+
+	LOGP(DMAIN, LOGL_NOTICE, "MGW pool with %u pool member(s) initialized\n", pool_members_initialized);
+
+	return 0;
+}
+
 static void st_starting_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct bsc_nat *bsc_nat = (struct bsc_nat *)fi->priv;
@@ -354,6 +372,11 @@ static void st_starting_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 	}
 
 	if (sccp_inst_init(bsc_nat->ran.sccp_inst, "OsmoBSCNAT-RAN", DEFAULT_PC_RAN, sccp_sap_up_ran, OSMO_SCCP_SSN_BSSAP) < 0) {
+		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
+		return;
+	}
+
+	if (mgw_init(bsc_nat->mgw.pool) < 0) {
 		osmo_fsm_inst_state_chg(fi, BSC_NAT_FSM_ST_STOPPED, 0, 0);
 		return;
 	}

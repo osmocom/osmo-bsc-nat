@@ -24,6 +24,7 @@
 #include <osmocom/vty/command.h>
 
 enum bsc_nat_vty_nodes {
+	MGW_NODE,
 	BSC_NAT_NODE = _LAST_OSMOVTY_NODE,
 };
 
