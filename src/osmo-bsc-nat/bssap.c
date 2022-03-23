@@ -38,6 +38,41 @@ int bssmap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *
 	return osmo_sccp_tx_unitdata_msg(sccp_inst->scu, &sccp_inst->addr, addr, msg);
 }
 
+static int bssmap_cn_handle_paging(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
+{
+	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran.sccp_inst;
+	struct msc *msc = msc_get();
+	struct bsc *bsc;
+	int ret = 0;
+	int rc;
+
+	if (msc->addr.pc != addr->pc) {
+		LOGP(DMAIN, LOGL_ERROR, "Unexpected Rx PAGING in CN from %s, which is not %s\n",
+		     osmo_ss7_pointcode_print(NULL, addr->pc), talloc_get_name(msc));
+		return -1;
+	}
+
+	LOGP(DMAIN, LOGL_DEBUG, "Rx PAGING from %s\n", talloc_get_name(msc));
+
+	msgb_pull_to_l2(msg);
+
+	/* Page all BSCs */
+	llist_for_each_entry(bsc, &g_bsc_nat->ran.bscs, list) {
+		LOGP(DMAIN, LOGL_DEBUG, "Fwd to %s\n", talloc_get_name(bsc));
+		rc = osmo_sccp_tx_unitdata(sccp_inst->scu,
+					   &sccp_inst->addr,
+					   &bsc->addr,
+					   msg->data,
+					   msgb_length(msg));
+		if (rc < 0) {
+			LOGP(DMAIN, LOGL_ERROR, "Fwd to %s failed\n", talloc_get_name(bsc));
+			ret = rc;
+		}
+	}
+
+	return ret;
+}
+
 static int bssmap_cn_handle_reset_ack(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	struct msc *msc = msc_get();
@@ -59,6 +94,9 @@ static int bssmap_cn_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, u
 	int ret = 0;
 
 	switch (msg->l3h[0]) {
+	case BSS_MAP_MSG_PAGING:
+		ret = bssmap_cn_handle_paging(addr, msg, length);
+		break;
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
 		ret = bssmap_cn_handle_reset_ack(addr, msg, length);
 		break;
