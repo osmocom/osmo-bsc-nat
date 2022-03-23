@@ -60,6 +60,8 @@ virtual BSC, BTS and MS (can be used next to a real BSC/BTS/MS):
 
 ```
 BSC_COUNT=2
+BSC0_CODEC_LIST="fr2"
+BSC1_CODEC_LIST="fr2"
 BTS1_RUN_IN_OSMO_DEV=1
 STP_RAN_IP="127.0.0.2"
 MS_RUN_IN_OSMO_DEV=1
