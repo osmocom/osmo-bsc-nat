@@ -24,4 +24,4 @@
 int bssap_handle_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msgb,
 		     unsigned int length);
 
-int bssap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr);
+int bssmap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr);

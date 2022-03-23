@@ -27,7 +27,7 @@
 #include <osmocom/bsc_nat/logging.h>
 #include <osmocom/bsc_nat/msc.h>
 
-int bssap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr)
+int bssmap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr)
 {
 	enum bsc_nat_net net = sccp_inst == g_bsc_nat->cn.sccp_inst ? BSC_NAT_NET_CN : BSC_NAT_NET_RAN;
 
@@ -38,7 +38,7 @@ int bssap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *a
 	return osmo_sccp_tx_unitdata_msg(sccp_inst->scu, &sccp_inst->addr, addr, msg);
 }
 
-static int bssap_cn_handle_reset_ack(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
+static int bssmap_cn_handle_reset_ack(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	struct msc *msc = msc_get();
 
@@ -54,13 +54,13 @@ static int bssap_cn_handle_reset_ack(struct osmo_sccp_addr *addr, struct msgb *m
 	return 0;
 }
 
-static int bssap_cn_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
+static int bssmap_cn_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	int ret = 0;
 
 	switch (msg->l3h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
-		ret = bssap_cn_handle_reset_ack(addr, msg, length);
+		ret = bssmap_cn_handle_reset_ack(addr, msg, length);
 		break;
 	default:
 		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssmap_name(msg->l3h[0]));
@@ -70,7 +70,7 @@ static int bssap_cn_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, un
 	return ret;
 }
 
-static int bssap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
+static int bssmap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = g_bsc_nat->ran.sccp_inst;
 	struct bsc *bsc;
@@ -87,13 +87,13 @@ static int bssap_ran_handle_reset(struct osmo_sccp_addr *addr, struct msgb *msg,
 	return osmo_sccp_tx_unitdata_msg(sccp_inst->scu, &sccp_inst->addr, addr, msg);
 }
 
-static int bssap_ran_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
+static int bssmap_ran_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, unsigned int length)
 {
 	int ret = 0;
 
 	switch (msg->l3h[0]) {
 	case BSS_MAP_MSG_RESET:
-		ret = bssap_ran_handle_reset(addr, msg, length);
+		ret = bssmap_ran_handle_reset(addr, msg, length);
 		break;
 	default:
 		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssmap_name(msg->l3h[0]));
@@ -103,7 +103,7 @@ static int bssap_ran_rcvmsg_udt(struct osmo_sccp_addr *addr, struct msgb *msg, u
 	return ret;
 }
 
-static int bssap_rcvmsg_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msg,
+static int bssmap_rcvmsg_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msg,
 			    unsigned int length)
 {
 	if (length < 1) {
@@ -114,8 +114,8 @@ static int bssap_rcvmsg_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_scc
 	LOGP(DMAIN, LOGL_NOTICE, "Rx UDT BSSMAP %s\n", gsm0808_bssmap_name(msg->l3h[0]));
 
 	if (sccp_inst == g_bsc_nat->cn.sccp_inst)
-		return bssap_cn_rcvmsg_udt(addr, msg, length);
-	return bssap_ran_rcvmsg_udt(addr, msg, length);
+		return bssmap_cn_rcvmsg_udt(addr, msg, length);
+	return bssmap_ran_rcvmsg_udt(addr, msg, length);
 }
 
 int bssap_handle_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msgb,
@@ -140,7 +140,7 @@ int bssap_handle_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr 
 	switch (bs->type) {
 	case BSSAP_MSG_BSS_MANAGEMENT:
 		msgb->l3h = &msgb->l2h[sizeof(*bs)];
-		rc = bssap_rcvmsg_udt(sccp_inst, addr, msgb, length - sizeof(*bs));
+		rc = bssmap_rcvmsg_udt(sccp_inst, addr, msgb, length - sizeof(*bs));
 		break;
 	default:
 		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssap_name(bs->type));
