@@ -20,5 +20,5 @@
 #pragma once
 
 void bsc_nat_fsm_alloc(struct bsc_nat *bsc_nat);
-void bsc_nat_fsm_start(struct bsc_nat *bsc_nat);
+int bsc_nat_fsm_start(struct bsc_nat *bsc_nat);
 void bsc_nat_fsm_stop(struct bsc_nat *bsc_nat);

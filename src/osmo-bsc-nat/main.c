@@ -198,7 +198,8 @@ int main(int argc, char **argv)
 	main_vty_init(argc, argv);
 	signal_handler_init();
 
-	bsc_nat_fsm_start(g_bsc_nat);
+	if (bsc_nat_fsm_start(g_bsc_nat) < 0)
+		exit(1);
 
 	if (msc_alloc_from_addr_book() < 0)
 		exit(1);

@@ -474,9 +474,18 @@ void bsc_nat_fsm_alloc(struct bsc_nat *bsc_nat)
 	OSMO_ASSERT(bsc_nat->fi);
 }
 
-void bsc_nat_fsm_start(struct bsc_nat *bsc_nat)
+int bsc_nat_fsm_start(struct bsc_nat *bsc_nat)
 {
-	osmo_fsm_inst_dispatch(bsc_nat->fi, BSC_NAT_FSM_EV_START, NULL);
+	int rc = osmo_fsm_inst_dispatch(bsc_nat->fi, BSC_NAT_FSM_EV_START, NULL);
+	if (rc)
+		return rc;
+
+	/* st_starting_on_enter() doesn't change to STARTED if e.g. vty config
+	 * is incomplete */
+	if (bsc_nat->fi->state != BSC_NAT_FSM_ST_STARTED)
+		return -1;
+
+	return 0;
 }
 
 void bsc_nat_fsm_stop(struct bsc_nat *bsc_nat)
