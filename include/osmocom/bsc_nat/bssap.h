@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <osmocom/core/msgb.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 
 int bssap_handle_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msgb,

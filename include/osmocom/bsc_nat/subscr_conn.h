@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <osmocom/bsc_nat/bsc_nat.h>
+
 /* connection for one subscriber */
 struct subscr_conn {
 	struct llist_head list;
