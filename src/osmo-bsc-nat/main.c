@@ -184,6 +184,7 @@ int main(int argc, char **argv)
 
 	talloc_enable_null_tracking();
 	tall_bsc_nat_ctx = talloc_named_const(NULL, 0, "bsc_nat");
+	osmo_fsm_set_dealloc_ctx(OTC_SELECT);
 
 	rc = osmo_init_logging2(tall_bsc_nat_ctx, &bsc_nat_log_info);
 	if (rc < 0)
