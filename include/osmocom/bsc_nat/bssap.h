@@ -22,7 +22,13 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 
+/* connection-less */
 int bssap_handle_udt(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr, struct msgb *msgb,
 		     unsigned int length);
 
 int bssmap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *addr);
+
+/* connection-oriented */
+struct subscr_conn;
+
+int bssap_handle_dt(enum bsc_nat_net net, struct subscr_conn *subscr_conn, struct msgb *msgb, unsigned int length);

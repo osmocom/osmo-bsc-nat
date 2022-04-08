@@ -126,14 +126,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 			goto error;
 		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
-
-		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_data(g_bsc_nat->ran.sccp_inst->scu,
-				  subscr_conn->ran.id,
-				  oph->msg->data,
-				  msgb_length(oph->msg));
-		rc = 0;
+		rc = bssap_handle_dt(BSC_NAT_NET_CN, subscr_conn, oph->msg, msgb_l2len(oph->msg));
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
@@ -253,14 +246,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 			goto error;
 		}
 
-		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
-
-		msgb_pull_to_l2(oph->msg);
-		osmo_sccp_tx_data(g_bsc_nat->cn.sccp_inst->scu,
-				  subscr_conn->cn.id,
-				  oph->msg->data,
-				  msgb_length(oph->msg));
-		rc = 0;
+		rc = bssap_handle_dt(BSC_NAT_NET_RAN, subscr_conn, oph->msg, msgb_l2len(oph->msg));
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
