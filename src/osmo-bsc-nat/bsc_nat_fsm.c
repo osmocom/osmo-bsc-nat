@@ -200,7 +200,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 			goto error;
 		}
 
-		subscr_conn = subscr_conn_alloc(msc, bsc, subscr_conn_get_next_id(BSC_NAT_NET_CN), prim->u.connect.conn_id);
+		subscr_conn = subscr_conn_alloc(msc, bsc, subscr_conn_get_next_id_ran(), prim->u.connect.conn_id);
 
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 

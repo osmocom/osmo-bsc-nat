@@ -26,15 +26,9 @@
 #include <osmocom/bsc_nat/subscr_conn.h>
 #include <osmocom/bsc_nat/logging.h>
 
-/* Get the next available id in either CN or RAN. */
-int subscr_conn_get_next_id(enum bsc_nat_net net)
+int subscr_conn_get_next_id_ran()
 {
-	uint32_t *id;
-
-	if (net == BSC_NAT_NET_RAN)
-		id = &g_bsc_nat->ran.subscr_conn_id_next;
-	else
-		id = &g_bsc_nat->cn.subscr_conn_id_next;
+	uint32_t *id = &g_bsc_nat->ran.subscr_conn_id_next;
 
 	for (int i = 0; i < 0xFFFFFF; i++) {
 		struct subscr_conn *subscr_conn;
@@ -43,8 +37,7 @@ int subscr_conn_get_next_id(enum bsc_nat_net net)
 		*id = (*id + 1) & 0xffffff;
 
 		llist_for_each_entry(subscr_conn, &g_bsc_nat->subscr_conns, list) {
-			if ((net == BSC_NAT_NET_RAN && subscr_conn->ran.id == *id)
-			    || (net == BSC_NAT_NET_CN && subscr_conn->cn.id == *id)) {
+			if (*id == subscr_conn->ran.id) {
 				already_used = true;
 				break;
 			}

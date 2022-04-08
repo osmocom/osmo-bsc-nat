@@ -36,7 +36,7 @@ struct subscr_conn {
 	} ran;
 };
 
-int subscr_conn_get_next_id(enum bsc_nat_net net);
+int subscr_conn_get_next_id_ran();
 
 struct subscr_conn *subscr_conn_alloc(struct msc *msc, struct bsc *bsc, uint32_t id_cn, uint32_t id_ran);
 
