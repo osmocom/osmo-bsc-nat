@@ -26,6 +26,8 @@
 #include <osmocom/bsc_nat/subscr_conn.h>
 #include <osmocom/bsc_nat/logging.h>
 
+extern struct osmo_fsm subscr_conn_fsm;
+
 int subscr_conn_get_next_id_ran()
 {
 	uint32_t *id = &g_bsc_nat->ran.subscr_conn_id_next;
@@ -49,6 +51,29 @@ int subscr_conn_get_next_id_ran()
 	return -1;
 }
 
+int subscr_conn_get_next_id_mgw()
+{
+	uint32_t *id = &g_bsc_nat->mgw.call_id_next;
+
+	for (int i = 0; i < 0xFFFFFF; i++) {
+		struct subscr_conn *subscr_conn;
+		bool already_used = false;
+
+		*id = (*id + 1) & 0xffffff;
+
+		llist_for_each_entry(subscr_conn, &g_bsc_nat->subscr_conns, list) {
+			if (*id == subscr_conn->mgw_call_id) {
+				already_used = true;
+				break;
+			}
+		}
+
+		if (!already_used)
+			return *id;
+	}
+	return -1;
+}
+
 struct subscr_conn *subscr_conn_alloc(struct msc *msc, struct bsc *bsc, uint32_t id_cn, uint32_t id_ran)
 {
 	struct subscr_conn *subscr_conn = talloc_zero(g_bsc_nat, struct subscr_conn);
@@ -59,6 +84,9 @@ struct subscr_conn *subscr_conn_alloc(struct msc *msc, struct bsc *bsc, uint32_t
 			talloc_get_name(bsc), id_ran);
 
 	LOGP(DMAIN, LOGL_DEBUG, "Add %s\n", talloc_get_name(subscr_conn));
+
+	subscr_conn->fi = osmo_fsm_inst_alloc(&subscr_conn_fsm, subscr_conn, subscr_conn, LOGL_INFO, NULL);
+	OSMO_ASSERT(subscr_conn->fi);
 
 	subscr_conn->cn.id = id_cn;
 	subscr_conn->cn.msc = msc;
@@ -88,5 +116,6 @@ void subscr_conn_free(struct subscr_conn *subscr_conn)
 {
 	LOGP(DMAIN, LOGL_DEBUG, "Del %s\n", talloc_get_name(subscr_conn));
 	llist_del(&subscr_conn->list);
+	osmo_fsm_inst_free(subscr_conn->fi);
 	talloc_free(subscr_conn);
 }

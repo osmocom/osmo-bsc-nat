@@ -44,6 +44,7 @@ struct bsc_nat {
 	struct {
 		struct mgcp_client_pool *pool;
 		struct osmo_tdef *tdefs;
+		uint32_t call_id_next;
 	} mgw;
 
 	struct {

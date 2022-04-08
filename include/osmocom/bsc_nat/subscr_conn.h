@@ -20,26 +20,45 @@
 #pragma once
 
 #include <osmocom/bsc_nat/bsc_nat.h>
+#include <osmocom/bsc_nat/bssap.h>
 
 /* connection for one subscriber */
 struct subscr_conn {
 	struct llist_head list;
+	struct osmo_fsm_inst *fi;
+	struct osmo_mgcpc_ep *ep;
+	uint32_t mgw_call_id;
 
 	struct {
 		uint32_t id;
+		struct osmo_mgcpc_ep_ci *ci;
 		struct msc *msc;
 	} cn;
 
 	struct {
 		uint32_t id;
+		struct osmo_mgcpc_ep_ci *ci;
 		struct bsc *bsc;
 	} ran;
+
+	/* Copy of BSSMAP Assignment Request/Complete while being processed by
+	 * subscr_conn_fsm. */
+	struct {
+		struct msgb *msg;
+		struct osmo_sockaddr_str aoip_transp_addr;
+	} ass;
 };
 
 int subscr_conn_get_next_id_ran();
+int subscr_conn_get_next_id_mgw();
 
 struct subscr_conn *subscr_conn_alloc(struct msc *msc, struct bsc *bsc, uint32_t id_cn, uint32_t id_ran);
 
 struct subscr_conn *subscr_conn_get_by_id(uint32_t id, enum bsc_nat_net net);
+
+int subscr_conn_rx_ass_req(struct subscr_conn *subscr_conn, const struct osmo_sockaddr_str *aoip_transp_addr,
+			   struct msgb *msg);
+int subscr_conn_rx_ass_compl(struct subscr_conn *subscr_conn, const struct osmo_sockaddr_str *aoip_transp_addr,
+			     struct msgb *msg);
 
 void subscr_conn_free(struct subscr_conn *subscr_conn);

@@ -20,6 +20,8 @@
 #pragma once
 
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/sockaddr_str.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/bsc_nat/bsc_nat.h>
 
 /* connection-less */
@@ -32,3 +34,11 @@ int bssmap_tx_reset(struct bsc_nat_sccp_inst *sccp_inst, struct osmo_sccp_addr *
 struct subscr_conn;
 
 int bssap_handle_dt(enum bsc_nat_net net, struct subscr_conn *subscr_conn, struct msgb *msgb, unsigned int length);
+
+#define bssmap_tx_assignment_failure_cn(subscr_conn, cause) \
+	bssmap_tx_assignment_failure(BSC_NAT_NET_CN, subscr_conn, cause)
+#define bssmap_tx_assignment_failure_ran(subscr_conn, cause) \
+	bssmap_tx_assignment_failure(BSC_NAT_NET_RAN, subscr_conn, cause)
+int bssmap_tx_assignment_failure(enum bsc_nat_net net, struct subscr_conn *subscr_conn, enum gsm0808_cause cause);
+
+int bssmap_replace_ie_aoip_transp_addr(struct msgb **msg, struct sockaddr_storage *ss);
