@@ -200,7 +200,12 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 			goto error;
 		}
 
-		subscr_conn = subscr_conn_alloc(msc, bsc, subscr_conn_get_next_id_ran(), prim->u.connect.conn_id);
+		rc = subscr_conn_get_next_id_ran();
+		if (rc < 0) {
+			LOGP(DMAIN, LOGL_ERROR, "Failed to get next_id_ran\n");
+			goto error;
+		}
+		subscr_conn = subscr_conn_alloc(msc, bsc, rc, prim->u.connect.conn_id);
 
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));
 
