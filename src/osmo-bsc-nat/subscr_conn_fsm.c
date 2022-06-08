@@ -267,6 +267,14 @@ static void st_waiting_for_ass_compl(struct osmo_fsm_inst *fi, uint32_t event, v
 		 * reset the FSM to idle here (clears the mgw endpoint). */
 		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
 		break;
+	case SUBSCR_CONN_FSM_EV_BSSMAP_CLEAR_COMMAND:
+		/* Dialing an invalid number results in receiving a clear
+		 * command from the MSC in ST_WAITING_FOR_ASSIGNMENT_COMPLETE.
+		 * The original message gets forwarded from CN to RAN by
+		 * bssmap_cn_handle_clear_cmd() already, so just reset the FSM
+		 * to idle here (clears the mgw endpoint). */
+		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		break;
 	default:
 		OSMO_ASSERT(false);
 	}
@@ -395,6 +403,7 @@ static struct osmo_fsm_state subscr_conn_fsm_states[] = {
 		.in_event_mask = 0
 			| X(SUBSCR_CONN_FSM_EV_BSSMAP_ASSIGNMENT_COMPLETE)
 			| X(SUBSCR_CONN_FSM_EV_BSSMAP_ASSIGNMENT_FAILURE)
+			| X(SUBSCR_CONN_FSM_EV_BSSMAP_CLEAR_COMMAND)
 			,
 		.out_state_mask = 0
 			| X(SUBSCR_CONN_FSM_ST_IDLE)
