@@ -31,8 +31,6 @@
 #include <osmocom/bsc_nat/subscr_conn_fsm.h>
 
 #define X(s) (1 << (s))
-#define TIMEOUT_MGW 10
-#define TIMEOUT_BSC 20
 
 enum subscr_conn_fsm_states {
 	SUBSCR_CONN_FSM_ST_IDLE,
@@ -43,6 +41,19 @@ enum subscr_conn_fsm_states {
 	SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_COMPLETE_MDCX_RAN,
 	SUBSCR_CONN_FSM_ST_WAITING_FOR_CLEAR_COMMAND,
 };
+
+static const struct osmo_tdef_state_timeout subscr_conn_fsm_timeouts[32] = {
+	[SUBSCR_CONN_FSM_ST_IDLE] = {},
+	[SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_CN] = { .T = BSC_NAT_TDEF_MGCP },
+	[SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_MDCX_CN] = { .T = BSC_NAT_TDEF_MGCP },
+	[SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_RAN] = { .T = BSC_NAT_TDEF_MGCP },
+	[SUBSCR_CONN_FSM_ST_WAITING_FOR_ASSIGNMENT_COMPLETE] = { .T = BSC_NAT_TDEF_ASS_COMPL },
+	[SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_COMPLETE_MDCX_RAN] = { .T = BSC_NAT_TDEF_MGCP },
+	[SUBSCR_CONN_FSM_ST_WAITING_FOR_CLEAR_COMMAND] = {}, /* Call in progress, no timeout */
+};
+
+#define subscr_conn_fsm_state_chg(fi, NEXT_STATE) \
+	osmo_tdef_fsm_inst_state_chg(fi, NEXT_STATE, subscr_conn_fsm_timeouts, g_bsc_nat->tdefs, -1)
 
 static int tx_ass_req_to_ran(struct subscr_conn *subscr_conn)
 {
@@ -122,7 +133,7 @@ static void st_idle(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
 	case SUBSCR_CONN_FSM_EV_BSSMAP_ASSIGNMENT_REQUEST:
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_CN, TIMEOUT_MGW, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_CN);
 		break;
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_TERM:
 		/* This event is expected, as we terminate the MGCP EP in
@@ -148,14 +159,14 @@ static void st_processing_ass_req_crcx_cn_on_enter(struct osmo_fsm_inst *fi, uin
 	if (call_id < 0) {
 		LOGPFSML(fi, LOGL_ERROR, "Failed to get next_id_mgw, aborting assignment request processing\n");
 		bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 	}
 
 	/* MGCP EP */
 	mgcp_client = mgcp_client_pool_get(g_bsc_nat->mgw.pool);
 	OSMO_ASSERT(mgcp_client);
 	subscr_conn->ep = osmo_mgcpc_ep_alloc(subscr_conn->fi, SUBSCR_CONN_FSM_EV_MGCP_EP_TERM, mgcp_client,
-					      g_bsc_nat->mgw.tdefs, "SUBSCR-CONN-EP",
+					      g_bsc_nat->tdefs, "SUBSCR-CONN-EP",
 					      mgcp_client_rtpbridge_wildcard(mgcp_client));
 
 	/* MGCP CRCX CN */
@@ -173,12 +184,12 @@ static void st_processing_ass_req_crcx_cn(struct osmo_fsm_inst *fi, uint32_t eve
 	switch (event) {
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_OK:
 		LOGPFSML(fi, LOGL_DEBUG, "Rx MGCP OK\n");
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_MDCX_CN, TIMEOUT_MGW, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_MDCX_CN);
 		break;
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_FAIL:
 		LOGPFSML(fi, LOGL_ERROR, "MGCP failure, aborting assignment request processing\n");
 		bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -208,12 +219,12 @@ static void st_processing_ass_req_mdcx_cn(struct osmo_fsm_inst *fi, uint32_t eve
 	switch (event) {
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_OK:
 		LOGPFSML(fi, LOGL_DEBUG, "Rx MGCP OK\n");
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_RAN, TIMEOUT_MGW, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_REQUEST_CRCX_RAN);
 		break;
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_FAIL:
 		LOGPFSML(fi, LOGL_ERROR, "MGCP failure, aborting assignment request processing\n");
 		bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -240,15 +251,15 @@ static void st_processing_ass_req_crcx_ran(struct osmo_fsm_inst *fi, uint32_t ev
 		LOGPFSML(fi, LOGL_DEBUG, "Rx MGCP OK\n");
 		if (tx_ass_req_to_ran(subscr_conn) < 0) {
 			bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-			osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+			subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 			return;
 		}
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_WAITING_FOR_ASSIGNMENT_COMPLETE, TIMEOUT_BSC, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_WAITING_FOR_ASSIGNMENT_COMPLETE);
 		break;
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_FAIL:
 		LOGPFSML(fi, LOGL_ERROR, "MGCP failure, aborting assignment request processing\n");
 		bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -259,13 +270,13 @@ static void st_waiting_for_ass_compl(struct osmo_fsm_inst *fi, uint32_t event, v
 {
 	switch (event) {
 	case SUBSCR_CONN_FSM_EV_BSSMAP_ASSIGNMENT_COMPLETE:
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_COMPLETE_MDCX_RAN, TIMEOUT_MGW, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_PROCESSING_ASSIGNMENT_COMPLETE_MDCX_RAN);
 		break;
 	case SUBSCR_CONN_FSM_EV_BSSMAP_ASSIGNMENT_FAILURE:
 		/* The original bssmap message gets forwarded from RAN to CN by
 		 * bssmap_ran_handle_assignment_failure() already, so just
 		 * reset the FSM to idle here (clears the mgw endpoint). */
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	case SUBSCR_CONN_FSM_EV_BSSMAP_CLEAR_COMMAND:
 		/* Dialing an invalid number results in receiving a clear
@@ -273,7 +284,7 @@ static void st_waiting_for_ass_compl(struct osmo_fsm_inst *fi, uint32_t event, v
 		 * The original message gets forwarded from CN to RAN by
 		 * bssmap_cn_handle_clear_cmd() already, so just reset the FSM
 		 * to idle here (clears the mgw endpoint). */
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -306,18 +317,16 @@ static void st_processing_ass_compl_mdcx_ran(struct osmo_fsm_inst *fi, uint32_t 
 		if (tx_ass_compl_to_cn(subscr_conn) < 0) {
 			bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
 			bssmap_tx_assignment_failure_ran(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-			osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+			subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 			return;
 		}
-		/* No timeout for ST_WAITING_FOR_CLEAR_COMMAND, as the FSM will
-		 * stay in this state until the call is done. */
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_WAITING_FOR_CLEAR_COMMAND, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_WAITING_FOR_CLEAR_COMMAND);
 		break;
 	case SUBSCR_CONN_FSM_EV_MGCP_EP_FAIL:
 		LOGPFSML(fi, LOGL_ERROR, "MGCP failure, aborting assignment complete processing\n");
 		bssmap_tx_assignment_failure_cn(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
 		bssmap_tx_assignment_failure_ran(subscr_conn, GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC);
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -331,7 +340,7 @@ static void st_waiting_for_clear_command(struct osmo_fsm_inst *fi, uint32_t even
 		/* The original bssmap message gets forwarded from CN to RAN by
 		 * bssmap_cn_handle_clear_cmd() already, so just reset the FSM
 		 * to idle here (clears the mgw endpoint). */
-		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+		subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -341,7 +350,7 @@ static void st_waiting_for_clear_command(struct osmo_fsm_inst *fi, uint32_t even
 int subscr_conn_fsm_timer_cb(struct osmo_fsm_inst *fi)
 {
 	LOGPFSML(fi, LOGL_ERROR, "Timeout reached, reset FSM to idle\n");
-	osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE, 0, 0);
+	subscr_conn_fsm_state_chg(fi, SUBSCR_CONN_FSM_ST_IDLE);
 	return 0;
 }
 

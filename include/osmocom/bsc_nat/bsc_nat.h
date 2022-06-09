@@ -24,6 +24,9 @@
 #include <osmocom/mgcp_client/mgcp_client_pool.h>
 #include <osmocom/sigtran/sccp_sap.h>
 
+#define BSC_NAT_TDEF_ASS_COMPL (-1)
+#define BSC_NAT_TDEF_MGCP (-2427)
+
 enum bsc_nat_net {
 	BSC_NAT_NET_CN = 0,
 	BSC_NAT_NET_RAN
@@ -39,11 +42,11 @@ struct bsc_nat_sccp_inst {
 
 struct bsc_nat {
 	struct osmo_fsm_inst *fi;
+	struct osmo_tdef *tdefs;
 	struct llist_head subscr_conns; /* list of struct subscr_conn */
 
 	struct {
 		struct mgcp_client_pool *pool;
-		struct osmo_tdef *tdefs;
 		uint32_t call_id_next;
 	} mgw;
 
