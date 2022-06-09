@@ -72,11 +72,14 @@ static void st_disconnected(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	case MSC_FSM_EV_TX_RESET:
 		LOGP(DMAIN, LOGL_DEBUG, "Tx RESET to %s\n", talloc_get_name(msc));
 
-		if (bssmap_tx_reset(g_bsc_nat->cn.sccp_inst, &msc->addr) < 0) {
+		if (!msc->addr) {
+			LOGP(DMAIN, LOGL_NOTICE, "MSC addr is not configured yet\n");
+		} else if (bssmap_tx_reset(g_bsc_nat->cn.sccp_inst, msc->addr) < 0) {
 			LOGP(DMAIN, LOGL_NOTICE, "Could not send RESET to MSC (SCCP not up yet?)\n");
 		}
 
-		/* Retry if RESET ACK was not received from MSC */
+		/* Retry with timeout if RESET could not be sent or RESET ACK
+		 * was not received from MSC */
 		msc_fsm_state_chg(fi, MSC_FSM_ST_CONNECTING);
 
 		break;

@@ -26,16 +26,14 @@
 
 extern struct osmo_fsm msc_fsm;
 
-struct msc *msc_alloc(struct osmo_sccp_addr *addr)
+struct msc *msc_alloc(uint16_t id)
 {
 	struct msc *msc = talloc_zero(g_bsc_nat, struct msc);
 
 	OSMO_ASSERT(msc);
-	talloc_set_name(msc, "MSC(PC=%s)", osmo_ss7_pointcode_print(NULL, addr->pc));
+	talloc_set_name(msc, "MSC(ID=%" PRIu16 ")", id);
 
 	LOGP(DMAIN, LOGL_DEBUG, "Add %s\n", talloc_get_name(msc));
-
-	msc->addr = *addr;
 
 	INIT_LLIST_HEAD(&msc->list);
 	llist_add(&msc->list, &g_bsc_nat->cn.mscs);
@@ -48,27 +46,98 @@ struct msc *msc_alloc(struct osmo_sccp_addr *addr)
 	return msc;
 }
 
-int msc_alloc_from_addr_book(void)
+struct msc *msc_get_by_id(uint16_t id)
 {
-	struct osmo_sccp_addr addr;
+	struct msc *msc;
 
-	/* For now only one MSC is supported */
-	if (osmo_sccp_addr_by_name_local(&addr, "msc", g_bsc_nat->cn.sccp_inst->ss7_inst) < 0) {
-		LOGP(DMAIN, LOGL_ERROR, "Configuration error, MSC not found in address book\n");
-		return -ENOENT;
+	llist_for_each_entry(msc, &g_bsc_nat->cn.mscs, list) {
+		if (msc->id == id)
+			return msc;
 	}
 
-	msc_alloc(&addr);
-	return 0;
+	return NULL;
 }
 
-struct msc *msc_get(void)
+struct msc *msc_get_by_mi(const struct osmo_mobile_identity *mi)
 {
-	/* For now only one MSC is supported */
+	struct msc *msc;
+	struct msc *msc_target = NULL;
+	struct msc *msc_round_robin_next = NULL;
+	struct msc *msc_round_robin_first = NULL;
+	uint8_t round_robin_id_next;
+	int16_t nri_v = -1;
+	bool is_null_nri = false;
 
-	OSMO_ASSERT(!llist_empty(&g_bsc_nat->cn.mscs));
+#define LOG_NRI(LOGLEVEL, FORMAT, ARGS...) \
+	LOGP(DMSC, LOGLEVEL, "%s NRI(%d)=0x%x=%d: " FORMAT, osmo_mobile_identity_to_str_c(OTC_SELECT, mi), \
+	     net->nri_bitlen, nri_v, nri_v, ##ARGS)
 
-	return llist_first_entry(&g_bsc_nat->cn.mscs, struct msc, list);
+	/* Extract NRI bits from TMSI, possibly indicating which MSC is
+	 * responsible */
+	if (mi->type == GSM_MI_TYPE_TMSI) {
+		if (osmo_tmsi_nri_v_get(&nri_v, mi->tmsi, net->nri_bitlen)) {
+			LOGP(DMSC, LOGL_ERROR, "Unable to retrieve NRI from TMSI, nri_bitlen == %u\n", net->nri_bitlen);
+			nri_v = -1;
+		} else {
+			is_null_nri = osmo_nri_v_matches_ranges(nri_v, net->null_nri_ranges);
+			if (is_null_nri)
+				LOG_NRI(LOGL_DEBUG, "this is a NULL-NRI\n");
+		}
+	}
+
+	/* Iterate MSCs to find one that matches the extracted NRI, and the
+	 * next round-robin target for the case no NRI match is found. */
+	round_robin_id_next = g_bsc_nat->cn.msc_id_next;
+	llist_for_each_entry(msc, &g_bsc_nat->mscs, list) {
+		bool nri_matches_msc = (nri_v >= 0 && osmo_nri_v_matches_ranges(nri_v, msc->nri_ranges));
+
+		if (!msc_is_connected(msc)) {
+			if (nri_matches_msc) {
+				LOG_NRI(LOGL_DEBUG, "matches %s, but this MSC is currently not connected\n",
+					talloc_get_name(msc));
+			}
+			continue;
+		}
+
+		/* Return MSC if it matches this NRI, with debug logging. */
+		if (nri_matches_msc) {
+			if (is_null_nri) {
+				LOG_NRI(LOGL_DEBUG, "matches %s, but this NRI is also configured as NULL-NRI\n",
+					talloc_get_name(msc));
+			} else {
+				LOG_NRI(LOGL_DEBUG, "matches %s\n", talloc_get_name(msc));
+				return msc;
+			}
+		}
+
+		/* Figure out the next round-robin MSC, same logic as in
+		 * osmo-bsc.git bsc_find_msc() (see lenghty comment there). */
+		if (!msc->allow_attach)
+			continue;
+		if (!msc_round_robin_first || msc->id < msc_round_robin_first->id)
+			msc_round_robin_first = msc;
+		if (msc->id >= round_robin_id_next
+		    && (!msc_round_robin_next || msc->id < msc_round_robin_next->id))
+			msc_round_robin_next = msc;
+	}
+
+	if (nri_v >= 0 && !is_null_nri)
+		LOG_NRI(LOGL_DEBUG, "No MSC found for this NRI, doing round-robin\n");
+
+	/* No dedicated MSC found. Choose by round-robin. If
+	 * msc_round_robin_next is NULL, there are either no more MSCs at/after
+	 * msc_id_next, or none of them are usable -- wrap to the start. */
+	msc_target = msc_round_robin_next ? : msc_round_robin_first;
+	if (!msc_target)
+		return NULL;
+
+	LOGP(DMSC, LOGL_DEBUG, "New subscriber %s: MSC round-robin selects %s\n",
+	     osmo_mobile_identity_to_str_c(OTC_SELECT, mi), talloc_get_name(msc_target));
+
+	/* An MSC was picked by round-robin, so update the next id to pick */
+	g_bsc_nat->cn.msc_id_next = msc_target->id + 1;
+	return msc_target;
+#undef LOG_NRI
 }
 
 void msc_free_subscr_conn_all(struct msc *msc)

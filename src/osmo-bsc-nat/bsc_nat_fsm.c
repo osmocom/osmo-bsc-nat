@@ -171,18 +171,13 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 	struct bsc_nat_sccp_inst *sccp_inst = osmo_sccp_user_get_priv(scu);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_sccp_addr *addr; /* BSC's address */
+	struct osmo_mobile_identity mi = {};
 	struct subscr_conn *subscr_conn;
 	struct msc *msc;
 	struct bsc *bsc;
 	int rc = -1;
 
 	LOGP(DMAIN, LOGL_DEBUG, "Rx %s from RAN\n", osmo_scu_prim_name(oph));
-
-	msc = msc_get();
-	if (!msc_is_connected(msc)) {
-		LOGP(DMAIN, LOGL_DEBUG, "Ignoring message from RAN, MSC is not connected yet\n");
-		goto error;
-	}
 
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
@@ -200,11 +195,27 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 			goto error;
 		}
 
+		if (bssap_get_mi_from_cr(&mi, oph->msg, msgb_l2len(oph->msg)) < 0) {
+			LOGP(DMAIN, LOGL_ERROR, "Failed to extract mobile identifier in conn req from %s\n",
+			     talloc_get_name(bsc));
+			/* msc_get_by_mi() will use round-robin to choose the
+			 * MSC when the type is none */
+			mi.type = GSM_MI_TYPE_NONE;
+		}
+
+		msc = msc_get_by_mi(&mi);
+		if (!msc) {
+			LOGP(DMAIN, LOGL_ERROR, "Failed to find an MSC to handle conn req from %s\n",
+			     talloc_get_name(bsc));
+			goto error;
+		}
+
 		rc = subscr_conn_get_next_id_ran();
 		if (rc < 0) {
 			LOGP(DMAIN, LOGL_ERROR, "Failed to get next_id_ran\n");
 			goto error;
 		}
+
 		subscr_conn = subscr_conn_alloc(msc, bsc, rc, prim->u.connect.conn_id);
 
 		LOGP(DMAIN, LOGL_DEBUG, "Fwd via %s\n", talloc_get_name(subscr_conn));

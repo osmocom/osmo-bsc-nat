@@ -202,9 +202,6 @@ int main(int argc, char **argv)
 	if (bsc_nat_fsm_start(g_bsc_nat) < 0)
 		exit(1);
 
-	if (msc_alloc_from_addr_book() < 0)
-		exit(1);
-
 	while (!osmo_select_shutdown_done())
 		osmo_select_main_ctx(0);
 

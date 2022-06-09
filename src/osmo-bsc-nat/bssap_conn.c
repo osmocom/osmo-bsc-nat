@@ -313,3 +313,66 @@ int bssap_handle_dt(enum bsc_nat_net net, struct subscr_conn *subscr_conn, struc
 
 	return rc;
 }
+
+static int bssmap_get_mi(struct osmo_mobile_identity *mi, struct msgb *msgb, unsigned int length)
+{
+	struct tlv_parsed tp;
+	struct tlv_p_entry *e;
+	struct msgb *dtap;
+	unsigned char *pos;
+	int rc;
+
+	if (length < 1) {
+		LOGP(DMAIN, LOGL_ERROR, "Not enough room: %u\n", length);
+		return -1;
+	}
+
+	if (msg->l3h[0] != BSS_MAP_MSG_COMPLETE_LAYER_3) {
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssmap_name(msgb->l3h[0]));
+		return -1;
+	}
+
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 1, length - 1, 0, 0);
+
+	if (!(e = TLVP_GET(&tp, GSM0808_IE_LAYER_3_INFORMATION))) {
+		LOGP(DMAIN, LOGL_ERROR, "Missing IE: Layer 3 Information\n");
+		return -1;
+	}
+	e->val
+
+	dtap = msgb_alloc(len, "DTAP from Complete Layer 3 Information");
+	pos = msgb_put(dtap, e->len);
+	memcpy(pos, e->val, e->len);
+	dtap->l3h = pos;
+	rc = osmo_mobile_identity_decode_from_l3(&mi, msg, false);
+	msgb_free(dtap);
+
+	return rc;
+}
+
+int bssap_get_mi_from_cr(struct osmo_mobile_identity *mi, struct msgb *msgb, unsigned int length)
+{
+	struct bssmap_header *bs;
+
+	LOGP(DMAIN, LOGL_DEBUG, "Rx CR: %s\n", osmo_hexdump(msgb->l2h, length));
+
+	if (length < sizeof(*bs)) {
+		LOGP(DMAIN, LOGL_ERROR, "The header is too short\n");
+		return -1;
+	}
+
+	switch (msgb->l2h[0]) {
+	case BSSAP_MSG_BSS_MANAGEMENT:
+		bs = (struct bssmap_header *)msgb->l2h;
+		if (bs->length < length - sizeof(*bs)) {
+			LOGP(DMAIN, LOGL_ERROR, "Failed to parse BSSMAP header\n");
+			return -1;
+		}
+		msgb->l3h = &msgb->l2h[sizeof(*bs)];
+		return bssmap_get_mi(mi, msgb, length - sizeof(*bs));
+	default:
+		LOGP(DMAIN, LOGL_ERROR, "%s(%s) is not implemented!\n", __func__, gsm0808_bssap_name(msgb->l2h[0]));
+	}
+
+	return -1;
+}

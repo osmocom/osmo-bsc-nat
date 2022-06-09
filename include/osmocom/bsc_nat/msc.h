@@ -24,14 +24,16 @@
 
 struct msc {
 	struct llist_head list;
-	struct osmo_sccp_addr addr;
+	uint16_t id;
+	struct osmo_sccp_addr *addr;
 	struct osmo_fsm_inst *fi;
+	struct osmo_nri_ranges *nri_ranges;
+	bool allow_attach;
 };
 
-struct msc *msc_alloc(struct osmo_sccp_addr *addr);
-int msc_alloc_from_addr_book(void);
+struct msc *msc_alloc(uint16_t id);
 
-struct msc *msc_get(void);
+struct msc *msc_get_by_id(uint16_t id);
 
 void msc_tx_reset(struct msc *msc);
 void msc_rx_reset_ack(struct msc *msc);

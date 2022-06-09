@@ -46,6 +46,9 @@ struct bsc_nat {
 	struct osmo_tdef *tdefs;
 	struct llist_head subscr_conns; /* list of struct subscr_conn */
 
+	uint8_t nri_bitlen;
+	struct osmo_nri_ranges *null_nri_ranges;
+
 	struct {
 		struct mgcp_client_pool *pool;
 		uint32_t call_id_next;
@@ -55,6 +58,7 @@ struct bsc_nat {
 		struct bsc_nat_sccp_inst *sccp_inst;
 		uint32_t subscr_conn_id_next;
 		struct llist_head mscs; /* list of struct msc */
+		uint16_t msc_id_next;
 	} cn;
 
 	struct {
