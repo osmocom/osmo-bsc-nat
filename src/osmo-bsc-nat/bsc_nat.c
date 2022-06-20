@@ -30,7 +30,7 @@
 
 static struct osmo_tdef g_bsc_nat_tdefs[] = {
 	{ .T = BSC_NAT_TDEF_ASS_COMPL, .default_val = 20, .desc = "Timeout for BSSMAP Assignment Complete from BSC" },
-	{ .T = BSC_NAT_TDEF_MSC_CONNECT, .default_val = 3, .desc = "Retry timeout after failing to connect to MSC" },
+	{ .T = BSC_NAT_TDEF_MSC_CONNECT, .default_val = 1, .desc = "Retry timeout after failing to connect to MSC" },
 	{ .T = BSC_NAT_TDEF_MGCP, .default_val = 5, .desc = "Timeout for MGCP response from MGW" },
 	{}
 };
