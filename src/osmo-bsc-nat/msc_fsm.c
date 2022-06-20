@@ -33,6 +33,15 @@ enum msc_fsm_states {
 	MSC_FSM_ST_CONNECTED,
 };
 
+static const struct osmo_tdef_state_timeout msc_fsm_timeouts[32] = {
+	[MSC_FSM_ST_DISCONNECTED] = {},
+	[MSC_FSM_ST_CONNECTING] = { .T = BSC_NAT_TDEF_MSC_CONNECT },
+	[MSC_FSM_ST_CONNECTED] = {},
+};
+
+#define msc_fsm_state_chg(fi, NEXT_STATE) \
+	osmo_tdef_fsm_inst_state_chg(fi, NEXT_STATE, msc_fsm_timeouts, g_bsc_nat->tdefs, -1)
+
 enum msc_fsm_events {
 	MSC_FSM_EV_TX_RESET,
 	MSC_FSM_EV_RX_RESET_ACK,
@@ -43,7 +52,7 @@ static void st_connecting(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
 	case MSC_FSM_EV_RX_RESET_ACK:
-		osmo_fsm_inst_state_chg(fi, MSC_FSM_ST_CONNECTED, 0, 0);
+		msc_fsm_state_chg(fi, MSC_FSM_ST_CONNECTED);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -67,8 +76,8 @@ static void st_disconnected(struct osmo_fsm_inst *fi, uint32_t event, void *data
 			LOGP(DMAIN, LOGL_ERROR, "Could not send RESET to MSC (SCCP not up yet?)\n");
 		}
 
-		/* Retry in 3s if RESET ACK was not received from MSC */
-		osmo_fsm_inst_state_chg(fi, MSC_FSM_ST_CONNECTING, 3, 0);
+		/* Retry if RESET ACK was not received from MSC */
+		msc_fsm_state_chg(fi, MSC_FSM_ST_CONNECTING);
 
 		break;
 	default:
@@ -80,7 +89,7 @@ int msc_fsm_timer_cb(struct osmo_fsm_inst *fi)
 {
 	switch (fi->state) {
 	case MSC_FSM_ST_CONNECTING:
-		osmo_fsm_inst_state_chg(fi, MSC_FSM_ST_DISCONNECTED, 0, 0);
+		msc_fsm_state_chg(fi, MSC_FSM_ST_DISCONNECTED);
 		break;
 	default:
 		OSMO_ASSERT(false);

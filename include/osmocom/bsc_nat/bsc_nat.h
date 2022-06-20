@@ -25,6 +25,7 @@
 #include <osmocom/sigtran/sccp_sap.h>
 
 #define BSC_NAT_TDEF_ASS_COMPL (-1)
+#define BSC_NAT_TDEF_MSC_CONNECT (-2)
 #define BSC_NAT_TDEF_MGCP (-2427)
 
 enum bsc_nat_net {
