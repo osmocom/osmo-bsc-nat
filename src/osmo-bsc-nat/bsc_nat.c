@@ -98,6 +98,9 @@ const char *bsc_nat_print_addr(enum bsc_nat_net net, struct osmo_sccp_addr *addr
 {
 	static char buf[25];
 
+	if (!addr)
+		return NULL;
+
 	snprintf(buf, sizeof(buf), "PC=%s in %s", osmo_ss7_pointcode_print(NULL, addr->pc),
 		 net == BSC_NAT_NET_CN ? "CN" : "RAN");
 

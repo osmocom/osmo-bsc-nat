@@ -80,7 +80,7 @@ static int sccp_sap_up_cn(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = osmo_sccp_user_get_priv(scu);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
-	struct osmo_sccp_addr *addr; /* MSC's address */
+	struct osmo_sccp_addr *addr = NULL; /* MSC's address */
 	struct subscr_conn *subscr_conn;
 	int rc = -1;
 
@@ -170,7 +170,7 @@ static int sccp_sap_up_ran(struct osmo_prim_hdr *oph, void *scu)
 {
 	struct bsc_nat_sccp_inst *sccp_inst = osmo_sccp_user_get_priv(scu);
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
-	struct osmo_sccp_addr *addr; /* BSC's address */
+	struct osmo_sccp_addr *addr = NULL; /* BSC's address */
 	struct subscr_conn *subscr_conn;
 	struct msc *msc;
 	struct bsc *bsc;
