@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include <errno.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/sigtran/sccp_helpers.h>
@@ -31,7 +32,7 @@ int bssmap_replace_ie_aoip_transp_addr(struct msgb **msg, struct sockaddr_storag
 	struct msgb *msg_old = *msg;
 	const struct tlv_definition *def = gsm0808_att_tlvdef();
 	int ofs = 1; /* first byte is bssmap message type */
-	int rc;
+	uint8_t tag;
 
 	msg_new = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM, talloc_get_name(msg_old));
 	OSMO_ASSERT(msg_new);
@@ -39,26 +40,25 @@ int bssmap_replace_ie_aoip_transp_addr(struct msgb **msg, struct sockaddr_storag
 
 	while (ofs < msgb_l3len(msg_old)) {
 		int rv;
-		uint8_t tag;
 		const uint8_t *val;
-		uint16_t len;
+		const uint8_t len_tl = 2;
+		uint16_t len_v;
 
-		rv = tlv_parse_one(&tag, &len, &val, def, &msg_old->l3h[ofs], msgb_l3len(msg_old) - ofs);
+		rv = tlv_parse_one(&tag, &len_v, &val, def, &msg_old->l3h[ofs], msgb_l3len(msg_old) - ofs);
 		if (rv < 0) {
 			LOGP(DMAIN, LOGL_ERROR, "Failed to parse bssmap msg\n");
 			msgb_free(msg_new);
 			return rv;
 		}
 
-		if (tag == GSM0808_IE_AOIP_TRASP_ADDR)
-			rc = gsm0808_enc_aoip_trasp_addr(msg_new, ss);
-		else
-			rc = tlv_encode_one(msg_new, def->def[tag].type, tag, len, val);
-
-		if (rc < 0) {
-			LOGP(DMAIN, LOGL_ERROR, "Failed to encode tag %d into copy of bssmap msg\n", tag);
-			msgb_free(msg_new);
-			return rc;
+		if (tag == GSM0808_IE_AOIP_TRASP_ADDR) {
+			if (gsm0808_enc_aoip_trasp_addr(msg_new, ss) == 0)
+				goto enc_err;
+		} else {
+			if (len_tl + len_v > msgb_tailroom(msg_new))
+				goto enc_err;
+			if (tlv_encode_one(msg_new, def->def[tag].type, tag, len_v, val) < 0)
+				goto enc_err;
 		}
 
 		ofs += rv;
@@ -68,6 +68,10 @@ int bssmap_replace_ie_aoip_transp_addr(struct msgb **msg, struct sockaddr_storag
 	msgb_free(msg_old);
 	*msg = msg_new;
 	return 0;
+enc_err:
+	LOGP(DMAIN, LOGL_ERROR, "Failed to encode tag %d into copy of bssmap msg\n", tag);
+	msgb_free(msg_new);
+	return -EINVAL;
 }
 
 int bssmap_tx_assignment_failure(enum bsc_nat_net net, struct subscr_conn *subscr_conn, enum gsm0808_cause cause)
