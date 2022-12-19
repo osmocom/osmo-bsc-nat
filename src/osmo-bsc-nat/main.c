@@ -128,7 +128,7 @@ static void main_vty_init(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = telnet_init_dynif(tall_bsc_nat_ctx, g_bsc_nat, vty_get_bind_addr(), OSMO_VTY_PORT_BSC_NAT);
+	rc = telnet_init_default(tall_bsc_nat_ctx, g_bsc_nat, OSMO_VTY_PORT_BSC_NAT);
 	if (rc < 0) {
 		perror("Error binding VTY port");
 		exit(1);
