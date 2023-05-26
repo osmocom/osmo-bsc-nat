@@ -1,5 +1,7 @@
 [Unit]
 Description=Osmocom BSC NAT
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
