@@ -15,9 +15,9 @@ GIT Repository
 
 You can clone from the official osmo-bsc-nat.git repository using
 
-	git clone git://git.osmocom.org/osmo-bsc-nat.git
+	git clone https://gitea.osmocom.org/cellular-infrastructure/osmo-bsc-nat
 
-There is a cgit interface at https://git.osmocom.org/osmo-bsc-nat/
+There is a gitea web interface for browsing at <https://gitea.osmocom.org/cellular-infrastructure/osmo-bsc-nat>
 
 Documentation
 -------------

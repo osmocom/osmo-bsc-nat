@@ -18,8 +18,8 @@ Build-Depends: debhelper (>= 10),
                libosmo-mgcp-client-dev (>= 1.9.0),
                osmo-gsm-manuals-dev (>= 1.2.0)
 Standards-Version: 3.9.8
-Vcs-Git: git://git.osmocom.org/osmo-bsc-nat.git
-Vcs-Browser: https://git.osmocom.org/osmo-bsc-nat/
+Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/osmo-bsc-nat
+Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-bsc-nat
 Homepage: https://projects.osmocom.org/projects/osmo-bsc-nat
 
 Package: osmo-bsc-nat
